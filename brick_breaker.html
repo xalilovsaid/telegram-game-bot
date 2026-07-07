@@ -1,0 +1,1169 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Kiber Arkanoid Premium 🧱🏓</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: #030308;
+            color: #ffffff;
+            font-family: 'Rajdhani', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        #game-container {
+            position: relative;
+            width: 100%;
+            max-width: 400px;
+            height: 100vh;
+            max-height: 650px;
+            display: flex;
+            flex-direction: column;
+            background: radial-gradient(circle, #0c0b1e 0%, #020106 100%);
+            border: 3px solid #00f0ff;
+            box-shadow: 0 0 35px rgba(0, 240, 255, 0.55);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        #ui-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 15px;
+            background: rgba(8, 6, 20, 0.95);
+            border-bottom: 2px solid #ff007f;
+            z-index: 10;
+        }
+
+        .ui-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .ui-text {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 13px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+        }
+
+        #score-val {
+            color: #00f0ff;
+            text-shadow: 0 0 10px rgba(0, 240, 255, 0.8);
+        }
+
+        #level-val {
+            color: #ff007f;
+            text-shadow: 0 0 10px rgba(255, 0, 127, 0.8);
+        }
+
+        #lives-display {
+            font-size: 15px;
+            letter-spacing: 1.5px;
+            text-shadow: 0 0 8px #ff0055;
+        }
+
+        #mute-btn {
+            background: none;
+            border: none;
+            font-size: 17px;
+            color: #00f0ff;
+            cursor: pointer;
+            outline: none;
+            text-shadow: 0 0 5px #00f0ff;
+            padding-right: 5px;
+        }
+
+        canvas {
+            flex-grow: 1;
+            width: 100%;
+            background-color: transparent;
+            display: block;
+        }
+
+        #overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(3, 3, 8, 0.95);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .menu-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 32px;
+            font-weight: 900;
+            color: #00f0ff;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            margin-bottom: 20px;
+            text-shadow: 0 0 20px rgba(0, 240, 255, 0.9);
+            animation: glow 1.5s ease-in-out infinite alternate;
+        }
+
+        .menu-desc {
+            font-size: 15px;
+            line-height: 1.6;
+            color: #a0a0c0;
+            margin-bottom: 30px;
+            max-width: 300px;
+        }
+
+        .menu-btn {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 16px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: #050510;
+            background: linear-gradient(45deg, #00f0ff, #ff007f);
+            border: none;
+            padding: 14px 40px;
+            border-radius: 30px;
+            cursor: pointer;
+            box-shadow: 0 0 20px rgba(255, 0, 127, 0.6);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .menu-btn:hover {
+            transform: scale(1.06);
+            box-shadow: 0 0 30px rgba(0, 240, 255, 0.95);
+        }
+
+        @keyframes glow {
+            from {
+                text-shadow: 0 0 10px rgba(0, 240, 255, 0.7), 0 0 20px rgba(0, 240, 255, 0.5);
+            }
+            to {
+                text-shadow: 0 0 25px rgba(0, 240, 255, 1), 0 0 35px rgba(255, 0, 127, 0.9);
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <!-- UI paneli -->
+        <div id="ui-bar">
+            <div class="ui-group">
+                <button id="mute-btn">🔊</button>
+                <div class="ui-text">SCORE: <span id="score-val">0</span></div>
+            </div>
+            <div class="ui-text">LVL: <span id="level-val">1</span></div>
+            <div id="lives-display">❤️❤️❤️</div>
+        </div>
+
+        <!-- O'yin oynasi -->
+        <canvas id="gameCanvas"></canvas>
+
+        <!-- Start/Game Over/Win oyna -->
+        <div id="overlay">
+            <h1 class="menu-title" id="overlay-title">Kiber Arkanoid</h1>
+            <p class="menu-desc" id="overlay-desc">Uchqun sochuvchi koptoklar, xavfsizlik qalqonlari, magnit platforma va 4-bosqichdagi Katta Boss jangi bilan jihozlangan mukammal nashr!</p>
+            <div id="mini-leaderboard" style="width:90%;max-width:300px;margin:10px auto;"></div>
+            <button class="menu-btn" id="start-btn">O'yinni boshlash</button>
+            <button class="menu-btn" id="boss-btn" style="margin-top: 15px; background: linear-gradient(45deg, #ff0055, #ffaa00); box-shadow: 0 0 20px rgba(255, 0, 85, 0.65);">BOSS JANGI 👾 (TEST)</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const overlay = document.getElementById('overlay');
+        const overlayTitle = document.getElementById('overlay-title');
+        const overlayDesc = document.getElementById('overlay-desc');
+        const startBtn = document.getElementById('start-btn');
+        const bossBtn = document.getElementById('boss-btn');
+        const scoreDisplay = document.getElementById('score-val');
+        const levelDisplay = document.getElementById('level-val');
+        const livesDisplay = document.getElementById('lives-display');
+        const muteBtn = document.getElementById('mute-btn');
+
+        const tg = window.Telegram?.WebApp;
+        if (tg) { tg.ready(); }
+        const tgUser = tg?.initDataUnsafe?.user || { id: 0, first_name: "O'yinchi" };
+
+        // O'yin parametrlari
+        let gameActive = false;
+        let score = 0;
+        let level = 1;
+        let lives = 3;
+        let soundMuted = false;
+        let gridOffsetY = 0; // Fon animatsiyasi uchun
+
+        // O'yin obyektlari
+        let paddle = {
+            x: 0,
+            y: 0,
+            width: 75,
+            height: 12,
+            targetWidth: 75,
+            laserActive: false,
+            laserTimer: 0,
+            magnetActive: false,
+            magnetTimer: 0
+        };
+
+        let balls = [];
+        let bricks = [];
+        let particles = [];
+        let powerups = [];
+        let lasers = [];
+        let boss = null;
+        let bossBullets = [];
+
+        // Pastki Xavfsizlik Qalqoni (Shield) bonus tizimi
+        let shieldActive = false;
+
+        // Web Audio API sintezator
+        let audioCtx = null;
+        let musicInterval = null;
+        let musicStep = 0;
+
+        // Musiqa notalari: Bassline va Melodiya arpedjio (Synthwave Loop)
+        const bassNotes = [110, 110, 110, 110, 87.31, 87.31, 87.31, 87.31, 98.00, 98.00, 98.00, 98.00, 82.41, 82.41, 82.41, 82.41]; // A2 -> F2 -> G2 -> E2
+        const melodyNotes = [220, 330, 440, 330, 174.61, 261.63, 349.23, 261.63, 196.00, 293.66, 392.00, 293.66, 164.81, 246.94, 329.63, 246.94]; // Arpedjio
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                startBackgroundMusic();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function playSynthSound(freq, type, dur, gainVal) {
+            if (soundMuted) return;
+            try {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = type || 'sine';
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                gain.gain.setValueAtTime(gainVal || 0.1, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + dur);
+            } catch (e) {}
+        }
+
+        // Fondagi kiber-musiqa generatori (Synthwave 2-Voice)
+        function startBackgroundMusic() {
+            if (musicInterval) clearInterval(musicInterval);
+            musicInterval = setInterval(() => {
+                if (soundMuted || !gameActive) return;
+                
+                const step = musicStep % bassNotes.length;
+                const bassFreq = bassNotes[step];
+                const melFreq = melodyNotes[step];
+                
+                // Bass (Triangle - yumshoq va yoqimli)
+                playSynthSound(bassFreq, 'triangle', 0.24, 0.14);
+                
+                // Melodiya (Sine - yumshoq, har 2-chi qadamda)
+                if (step % 2 === 0) {
+                    playSynthSound(melFreq, 'sine', 0.18, 0.04);
+                }
+                
+                musicStep++;
+            }, 250); // 120 BPM
+        }
+
+        function triggerVibration(dur) {
+            if (navigator.vibrate) {
+                navigator.vibrate(dur);
+            }
+        }
+
+        // Ovozlar (Harsh sawtooth o'rniga triangle va sine)
+        const playBounceSound = () => playSynthSound(380, 'sine', 0.1, 0.12);
+        const playBreakSound = () => playSynthSound(220, 'triangle', 0.15, 0.15);
+        const playLaserSound = () => playSynthSound(550, 'triangle', 0.08, 0.06);
+        const playBonusSound = () => {
+            playSynthSound(523.25, 'sine', 0.08, 0.08);
+            setTimeout(() => playSynthSound(659.25, 'sine', 0.12, 0.08), 60);
+        };
+        const playShieldBounceSound = () => {
+            playSynthSound(180, 'sine', 0.35, 0.2);
+            playSynthSound(360, 'triangle', 0.25, 0.1);
+        };
+
+        // Mute tugmasi
+        muteBtn.addEventListener('click', () => {
+            soundMuted = !soundMuted;
+            muteBtn.innerText = soundMuted ? "🔇" : "🔊";
+        });
+
+        function resizeCanvas() {
+            canvas.width = canvas.clientWidth;
+            canvas.height = canvas.clientHeight;
+        }
+
+        function initGame(nextLevel = 1) {
+            initAudio();
+            score = nextLevel === 1 ? 0 : score;
+            level = nextLevel;
+            lives = nextLevel === 1 ? 3 : lives;
+            scoreDisplay.innerText = score;
+            levelDisplay.innerText = level;
+            updateLivesDisplay();
+
+            paddle.width = 75;
+            paddle.targetWidth = 75;
+            paddle.x = canvas.width / 2 - paddle.width / 2;
+            paddle.y = canvas.height - 40;
+            paddle.laserActive = false;
+            paddle.laserTimer = 0;
+            paddle.magnetActive = false;
+            paddle.magnetTimer = 0;
+
+            shieldActive = false;
+            boss = null;
+            bossBullets = [];
+
+            balls = [{
+                x: canvas.width / 2,
+                y: paddle.y - 12,
+                vx: 3,
+                vy: -5,
+                radius: 6,
+                speed: 6,
+                fireActive: false, // Fireball bonusi
+                fireTimer: 0,
+                attached: false, // Magnitga yopishish holati
+                attachOffset: 0,
+                trail: [] // Koptok izi
+            }];
+
+            bricks = [];
+            particles = [];
+            powerups = [];
+            lasers = [];
+
+            if (level === 4) {
+                // Boss Level
+                spawnBoss();
+            } else {
+                generateBricks();
+            }
+            gameActive = true;
+        }
+
+        function updateLivesDisplay() {
+            let hearts = "";
+            for (let i = 0; i < lives; i++) hearts += "❤️";
+            for (let i = lives; i < 3; i++) hearts += "🖤";
+            livesDisplay.innerText = hearts;
+        }
+
+        // Kiber Boss yaratish (Level 4)
+        function spawnBoss() {
+            boss = {
+                x: canvas.width / 2 - 50,
+                y: 60,
+                width: 100,
+                height: 35,
+                hp: 15,
+                maxHp: 15,
+                vx: 2.2,
+                shootCooldown: 80,
+                flashTimer: 0
+            };
+        }
+
+        function generateBricks() {
+            const rows = 4 + level;
+            const cols = 7;
+            const brickWidth = (canvas.width - 40) / cols;
+            const brickHeight = 16;
+            const startX = 20;
+            const startY = 50;
+
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    if (level === 2 && (r + c) % 2 === 0) continue; 
+                    if (level === 3 && r > 2 && (c === 0 || c === cols - 1)) continue; 
+
+                    let hp = 1;
+                    let color = '#00ffcc'; // Yengil neon
+                    if (r === 0) { hp = 3; color = '#ff0055'; } // Qiyin
+                    else if (r <= 2) { hp = 2; color = '#ffaa00'; } // O'rta
+
+                    bricks.push({
+                        x: startX + c * brickWidth,
+                        y: startY + r * (brickHeight + 6),
+                        width: brickWidth - 4,
+                        height: brickHeight,
+                        hp: hp,
+                        maxHp: hp,
+                        color: color
+                    });
+                }
+            }
+        }
+
+        // Parachalanish uchqunlari
+        function spawnShatterEffect(x, y, color) {
+            triggerVibration(15);
+            for (let i = 0; i < 15; i++) {
+                particles.push({
+                    x: x,
+                    y: y,
+                    vx: (Math.random() - 0.5) * 7,
+                    vy: (Math.random() - 0.5) * 7,
+                    size: Math.random() * 3.5 + 1.5,
+                    color: color,
+                    alpha: 1,
+                    decay: Math.random() * 0.025 + 0.012
+                });
+            }
+        }
+
+        // Boshqaruv (Touch va Mouse)
+        canvas.addEventListener('touchmove', (e) => {
+            if (!gameActive) return;
+            e.preventDefault();
+            const touch = e.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            const touchX = touch.clientX - rect.left;
+            paddle.x = touchX - paddle.width / 2;
+            keepPaddleInBounds();
+        });
+
+        // Magnitga yopishgan to'pni ekranga teginish orqali uchirish
+        canvas.addEventListener('touchstart', (e) => {
+            releaseAttachedBalls();
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (!gameActive) return;
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            paddle.x = mouseX - paddle.width / 2;
+            keepPaddleInBounds();
+        });
+
+        canvas.addEventListener('mousedown', (e) => {
+            releaseAttachedBalls();
+        });
+
+        function keepPaddleInBounds() {
+            if (paddle.x < 10) paddle.x = 10;
+            if (paddle.x + paddle.width > canvas.width - 10) {
+                paddle.x = canvas.width - 10 - paddle.width;
+            }
+            // Magnitlangan koptoklarni paddle bilan birga surish
+            balls.forEach(b => {
+                if (b.attached) {
+                    b.x = paddle.x + paddle.width / 2 + b.attachOffset;
+                }
+            });
+        }
+
+        function releaseAttachedBalls() {
+            balls.forEach(b => {
+                if (b.attached) {
+                    b.attached = false;
+                    b.vx = (Math.random() - 0.5) * 4;
+                    b.vy = -b.speed;
+                }
+            });
+        }
+
+        function shootLasers() {
+            lasers.push({ x: paddle.x + 6, y: paddle.y - 6 });
+            lasers.push({ x: paddle.x + paddle.width - 6, y: paddle.y - 6 });
+            playLaserSound();
+        }
+
+        // O'yin loopi
+        function update() {
+            if (!gameActive) {
+                requestAnimationFrame(update);
+                return;
+            }
+
+            // Fon siljishi
+            gridOffsetY = (gridOffsetY + 0.6) % 30;
+
+            // Platforma o'lchami o'zgarishi
+            paddle.width += (paddle.targetWidth - paddle.width) * 0.1;
+
+            // Laser taymer va otish
+            if (paddle.laserActive) {
+                paddle.laserTimer--;
+                if (paddle.laserTimer % 20 === 0) shootLasers();
+                if (paddle.laserTimer <= 0) paddle.laserActive = false;
+            }
+
+            // Magnit taymer
+            if (paddle.magnetActive) {
+                paddle.magnetTimer--;
+                if (paddle.magnetTimer <= 0) paddle.magnetActive = false;
+            }
+
+            // Lazer o'qlari
+            for (let i = lasers.length - 1; i >= 0; i--) {
+                const laser = lasers[i];
+                laser.y -= 8;
+
+                // G'ishtlar bilan to'qnashuv
+                for (let j = bricks.length - 1; j >= 0; j--) {
+                    const br = bricks[j];
+                    if (laser.x > br.x && laser.x < br.x + br.width && laser.y > br.y && laser.y < br.y + br.height) {
+                        lasers.splice(i, 1);
+                        damageBrick(j);
+                        break;
+                    }
+                }
+
+                // Boss bilan to'qnashuv
+                if (boss && laser.x > boss.x && laser.x < boss.x + boss.width && laser.y > boss.y && laser.y < boss.y + boss.height) {
+                    lasers.splice(i, 1);
+                    damageBoss();
+                }
+
+                if (laser.y < 0) lasers.splice(i, 1);
+            }
+
+            // Boss harakati va otish (Level 4)
+            if (boss) {
+                boss.x += boss.vx;
+                if (boss.x < 12 || boss.x + boss.width > canvas.width - 12) {
+                    boss.vx = -boss.vx;
+                }
+
+                if (boss.flashTimer > 0) boss.flashTimer--;
+
+                // Boss otishi
+                boss.shootCooldown--;
+                if (boss.shootCooldown <= 0) {
+                    bossBullets.push({ x: boss.x + boss.width / 2, y: boss.y + boss.height });
+                    boss.shootCooldown = Math.max(50, 90 - level * 10);
+                    playSynthSound(180, 'sine', 0.15, 0.08);
+                }
+            }
+
+            // Boss o'qlari harakati
+            for (let i = bossBullets.length - 1; i >= 0; i--) {
+                const bullet = bossBullets[i];
+                bullet.y += 4;
+
+                // Platformaga tegishi
+                if (bullet.y >= paddle.y && bullet.y <= paddle.y + paddle.height &&
+                    bullet.x >= paddle.x && bullet.x <= paddle.x + paddle.width) {
+                    
+                    bossBullets.splice(i, 1);
+                    triggerVibration(50);
+                    // Jarima: platforma torayadi va ochko kamayadi
+                    paddle.targetWidth = 50;
+                    score = Math.max(0, score - 30);
+                    scoreDisplay.innerText = score;
+                    playSynthSound(100, 'sawtooth', 0.3, 0.2);
+                    setTimeout(() => paddle.targetWidth = 75, 4000);
+                    continue;
+                }
+
+                if (bullet.y > canvas.height) {
+                    bossBullets.splice(i, 1);
+                }
+            }
+
+            // Koptoklar harakati
+            for (let i = balls.length - 1; i >= 0; i--) {
+                const ball = balls[i];
+
+                // Yopishgan koptok harakati
+                if (ball.attached) {
+                    ball.trail = [];
+                    continue;
+                }
+
+                ball.x += ball.vx;
+                ball.y += ball.vy;
+
+                // Fireball taymeri
+                if (ball.fireActive) {
+                    ball.fireTimer--;
+                    if (ball.fireTimer <= 0) ball.fireActive = false;
+                }
+
+                // Koptok izi (trail)
+                ball.trail.push({ x: ball.x, y: ball.y });
+                if (ball.trail.length > 6) ball.trail.shift();
+
+                // Devorlar bilan to'qnashuv
+                if (ball.x - ball.radius < 10) {
+                    ball.x = 10 + ball.radius;
+                    ball.vx = -ball.vx;
+                    playBounceSound();
+                }
+                if (ball.x + ball.radius > canvas.width - 10) {
+                    ball.x = canvas.width - 10 - ball.radius;
+                    ball.vx = -ball.vx;
+                    playBounceSound();
+                }
+                if (ball.y - ball.radius < 10) {
+                    ball.y = 10 + ball.radius;
+                    ball.vy = -ball.vy;
+                    playBounceSound();
+                }
+
+                // Platforma (Paddle) bilan to'qnashuv
+                if (ball.y + ball.radius >= paddle.y && ball.y - ball.radius <= paddle.y + paddle.height &&
+                    ball.x >= paddle.x && ball.x <= paddle.x + paddle.width) {
+                    
+                    const hitPt = ball.x - (paddle.x + paddle.width / 2);
+                    const normalizedHit = hitPt / (paddle.width / 2);
+                    const angle = normalizedHit * (Math.PI / 3.2);
+
+                    if (paddle.magnetActive) {
+                        // Magnitga yopishtirish
+                        ball.attached = true;
+                        ball.attachOffset = ball.x - (paddle.x + paddle.width / 2);
+                        ball.vx = 0;
+                        ball.vy = 0;
+                        playBonusSound();
+                    } else {
+                        ball.vx = ball.speed * Math.sin(angle);
+                        ball.vy = -ball.speed * Math.cos(angle);
+                        ball.y = paddle.y - ball.radius;
+                        playBounceSound();
+                    }
+                    continue;
+                }
+
+                // G'ishtlar bilan to'qnashuv
+                for (let j = bricks.length - 1; j >= 0; j--) {
+                    const br = bricks[j];
+                    if (ball.x + ball.radius > br.x && ball.x - ball.radius < br.x + br.width &&
+                        ball.y + ball.radius > br.y && ball.y - ball.radius < br.y + br.height) {
+                        
+                        if (!ball.fireActive) {
+                            // Agar alovli to'p bo'lmasa qaytadi, bo'lmasa g'ishtni teshib o'tadi
+                            const prevX = ball.x - ball.vx;
+                            if (prevX + ball.radius <= br.x || prevX - ball.radius >= br.x + br.width) {
+                                ball.vx = -ball.vx;
+                            } else {
+                                ball.vy = -ball.vy;
+                            }
+                        }
+                        damageBrick(j);
+                        break;
+                    }
+                }
+
+                // Bossga koptok tegishi
+                if (boss && ball.x + ball.radius > boss.x && ball.x - ball.radius < boss.x + boss.width &&
+                    ball.y + ball.radius > boss.y && ball.y - ball.radius < boss.y + boss.height) {
+                    
+                    if (!ball.fireActive) ball.vy = -ball.vy;
+                    damageBoss();
+                }
+
+                // Xavfsizlik Qalqoni (Shield) bilan to'qnashuv
+                if (shieldActive && ball.y + ball.radius >= canvas.height - 18) {
+                    ball.vy = -Math.abs(ball.vy);
+                    ball.y = canvas.height - 20 - ball.radius;
+                    shieldActive = false; // Qalqon yo'qoladi
+                    playShieldBounceSound();
+                    triggerVibration(100);
+                    continue;
+                }
+
+                // To'p pastga tushib ketsa
+                if (ball.y > canvas.height + 20) {
+                    balls.splice(i, 1);
+                }
+            }
+
+            // Jon ketishi
+            if (balls.length === 0) {
+                lives--;
+                updateLivesDisplay();
+                playSynthSound(130, 'sawtooth', 0.5, 0.25);
+                triggerVibration(150);
+
+                if (lives <= 0) {
+                    gameOver();
+                } else {
+                    balls.push({
+                        x: canvas.width / 2,
+                        y: paddle.y - 12,
+                        vx: 2.5,
+                        vy: -5.5,
+                        radius: 6,
+                        speed: 6,
+                        fireActive: false,
+                        fireTimer: 0,
+                        attached: false,
+                        attachOffset: 0,
+                        trail: []
+                    });
+                }
+            }
+
+            // Bonuslarni yig'ish
+            for (let i = powerups.length - 1; i >= 0; i--) {
+                const pu = powerups[i];
+                pu.y += 2.2;
+
+                if (pu.y + 12 >= paddle.y && pu.y <= paddle.y + paddle.height &&
+                    pu.x + 12 >= paddle.x && pu.x <= paddle.x + paddle.width) {
+                    
+                    activatePowerup(pu.type);
+                    powerups.splice(i, 1);
+                    playBonusSound();
+                    continue;
+                }
+
+                if (pu.y > canvas.height) powerups.splice(i, 1);
+            }
+
+            // Uchqunlar pasayishi
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.alpha -= p.decay;
+                if (p.alpha <= 0) particles.splice(i, 1);
+            }
+
+            // Oddiy darajalarni yakunlash
+            if (!boss && bricks.length === 0) {
+                levelUp();
+            }
+
+            draw();
+            requestAnimationFrame(update);
+        }
+
+        // G'isht sinishi
+        function damageBrick(idx) {
+            const br = bricks[idx];
+            br.hp--;
+            playBreakSound();
+            score += 10;
+            scoreDisplay.innerText = score;
+
+            if (br.hp <= 0) {
+                spawnShatterEffect(br.x + br.width / 2, br.y + br.height / 2, br.color);
+                
+                // 25% bonus tushish imkoniyati
+                if (Math.random() < 0.25) {
+                    const types = ['wide', 'triple', 'laser', 'slow', 'shield', 'fire', 'magnet'];
+                    const type = types[Math.floor(Math.random() * types.length)];
+                    powerups.push({
+                        x: br.x + br.width / 2 - 6,
+                        y: br.y + br.height,
+                        type: type
+                    });
+                }
+                bricks.splice(idx, 1);
+            } else {
+                br.color = '#ffffff'; // Zarba vizuali
+                setTimeout(() => {
+                    br.color = br.maxHp === 3 ? '#ff2266' : '#eeaa00';
+                }, 70);
+            }
+        }
+
+        // Bossga shikast yetkazish
+        function damageBoss() {
+            if (!boss) return;
+            boss.hp--;
+            boss.flashTimer = 8;
+            playBreakSound();
+            score += 50;
+            scoreDisplay.innerText = score;
+            triggerVibration(30);
+
+            if (boss.hp <= 0) {
+                // Boss o'ldi! O'yin to'liq yutildi!
+                spawnShatterEffect(boss.x + boss.width / 2, boss.y + boss.height / 2, '#ff0055');
+                boss = null;
+                levelUp();
+            }
+        }
+
+        // Bonuslarni ishga tushirish
+        function activatePowerup(type) {
+            score += 40;
+            scoreDisplay.innerText = score;
+
+            if (type === 'wide') {
+                paddle.targetWidth = 115;
+                setTimeout(() => paddle.targetWidth = 75, 9000);
+            } else if (type === 'triple') {
+                if (balls.length > 0) {
+                    const base = balls[0];
+                    balls.push({
+                        x: base.x, y: base.y, vx: base.vx + 2, vy: -5,
+                        radius: 6, speed: base.speed, trail: [], attached: false
+                    });
+                    balls.push({
+                        x: base.x, y: base.y, vx: base.vx - 2, vy: -5,
+                        radius: 6, speed: base.speed, trail: [], attached: false
+                    });
+                }
+            } else if (type === 'laser') {
+                paddle.laserActive = true;
+                paddle.laserTimer = 350;
+            } else if (type === 'slow') {
+                balls.forEach(b => {
+                    b.speed = 4.5;
+                    b.vx *= 0.75;
+                    b.vy *= 0.75;
+                    setTimeout(() => b.speed = 6, 8000);
+                });
+            } else if (type === 'shield') {
+                shieldActive = true;
+            } else if (type === 'fire') {
+                balls.forEach(b => {
+                    b.fireActive = true;
+                    b.fireTimer = 400; // ~7 soniya alovli
+                });
+            } else if (type === 'magnet') {
+                paddle.magnetActive = true;
+                paddle.magnetTimer = 500;
+            }
+        }
+
+        function levelUp() {
+            gameActive = false;
+            playSynthSound(523.25, 'sine', 0.25, 0.15);
+            setTimeout(() => playSynthSound(659.25, 'sine', 0.25, 0.15), 120);
+            setTimeout(() => playSynthSound(783.99, 'sine', 0.35, 0.15), 240);
+
+            if (level >= 4) {
+                overlayTitle.innerText = "🏆 MUZAFFARIYAT!";
+                overlayDesc.innerHTML = `Siz Kiber Bossni yo'q qildingiz va o'yinni to'liq zabt etdingiz!<br><br>Yakuniy ochko: <b>${score} ball</b>`;
+                startBtn.innerText = "Boshidan o'ynash";
+                overlay.style.display = 'flex';
+                level = 1;
+            } else {
+                overlayTitle.innerText = `LEVEL ${level} YUTILDI`;
+                overlayDesc.innerHTML = level === 3 
+                    ? `Tayyorlaning! Keyingi bosqichda sizni <b>KATTA KIBER BOSS 👾</b> kutmoqda!`
+                    : `Keyingi bosqich yanada tezroq va murakkabroq!`;
+                startBtn.innerText = `Level ${level + 1} ni boshlash`;
+                overlay.style.display = 'flex';
+                level++;
+            }
+        }
+
+        async function submitAndShowLeaderboard(gameName, finalScore) {
+            try {
+                await fetch('/api/submit_score', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        user_id: tgUser.id,
+                        name: tgUser.first_name,
+                        game: gameName,
+                        score: finalScore
+                    })
+                });
+            } catch(e) { console.error('Submit error:', e); }
+
+            try {
+                const resp = await fetch(`/api/leaderboard?game=${gameName}`);
+                const players = await resp.json();
+                renderMiniLeaderboard(players);
+            } catch(e) { console.error('Leaderboard error:', e); }
+        }
+
+        function renderMiniLeaderboard(players) {
+            const container = document.getElementById('mini-leaderboard');
+            if (!container) return;
+            const top10 = players.filter(p => p.score > 0).slice(0, 10);
+            if (top10.length === 0) {
+                container.innerHTML = '<p style="color:#8c8caf;font-size:13px;">Hali hech kim o\'ynamagan</p>';
+                return;
+            }
+            let html = '<div style="font-family:Orbitron,sans-serif;font-size:11px;color:#00f0ff;margin-bottom:6px;text-transform:uppercase;">🏆 TOP O\'YINCHILAR</div>';
+            html += '<div style="max-height:180px;overflow-y:auto;width:100%;">';
+            top10.forEach((p, i) => {
+                const medals = ['🥇','🥈','🥉'];
+                const medal = i < 3 ? medals[i] : `#${i+1}`;
+                const isMe = String(p.id) === String(tgUser.id);
+                const bg = isMe ? 'rgba(255,215,0,0.15)' : 'rgba(255,255,255,0.05)';
+                const border = isMe ? '1px solid #ffd700' : '1px solid rgba(255,255,255,0.08)';
+                html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 10px;margin:3px 0;border-radius:6px;background:${bg};border:${border};">`;
+                html += `<span style="color:#ff007f;font-weight:bold;min-width:28px;font-size:13px;">${medal}</span>`;
+                html += `<span style="flex:1;color:#fff;font-size:13px;padding:0 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${p.name || 'O\'yinchi'}</span>`;
+                html += `<span style="color:#00f0ff;font-weight:bold;font-size:13px;">${p.score.toLocaleString()}</span>`;
+                html += '</div>';
+            });
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        function gameOver() {
+            gameActive = false;
+            let highScore = parseInt(localStorage.getItem('cyber_breaker_high') || '0');
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('cyber_breaker_high', highScore);
+            }
+
+            overlayTitle.innerText = "🏁 O'YIN TUGADI";
+            overlayDesc.innerHTML = `Siz yutqazdingiz.<br>Natijangiz: <b>{score} ochko</b>.<br>Rekord natija: <b>{highScore} ochko</b>`.replace('{score}', score).replace('{highScore}', highScore);
+            startBtn.innerText = "Qayta boshlash";
+            overlay.style.display = 'flex';
+            level = 1;
+            submitAndShowLeaderboard('breaker', score);
+        }
+
+        // Chizish
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // 1. Dinamik Kiber Grid Foni (Moving Grid)
+            ctx.strokeStyle = 'rgba(0, 240, 255, 0.05)';
+            ctx.lineWidth = 1;
+            ctx.shadowBlur = 0; // fonga glow qo'ymaymiz tezlik uchun
+
+            // Gorizontal chiziqlar
+            for (let y = gridOffsetY; y < canvas.height; y += 30) {
+                ctx.beginPath();
+                ctx.moveTo(10, y);
+                ctx.lineTo(canvas.width - 10, y);
+                ctx.stroke();
+            }
+            // Vertikal chiziqlar
+            for (let x = 10; x < canvas.width; x += 30) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvas.height);
+                ctx.stroke();
+            }
+
+            // 2. Kiber Chegaralar (Outer Border)
+            ctx.strokeStyle = '#00f0ff';
+            ctx.lineWidth = 4;
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = '#00f0ff';
+            ctx.strokeRect(8, 0, canvas.width - 16, canvas.height);
+
+            // 3. Pastki Xavfsizlik Qalqoni (Shield)
+            if (shieldActive) {
+                ctx.save();
+                ctx.strokeStyle = '#00ffff';
+                ctx.lineWidth = 5;
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = '#00ffff';
+                ctx.beginPath();
+                ctx.moveTo(10, canvas.height - 15);
+                ctx.lineTo(canvas.width - 10, canvas.height - 15);
+                ctx.stroke();
+                ctx.restore();
+            }
+
+            // 4. G'ishtlar (Bricks)
+            bricks.forEach(br => {
+                ctx.save();
+                ctx.shadowBlur = 12;
+                ctx.shadowColor = br.color;
+                ctx.fillStyle = br.color;
+                ctx.beginPath();
+                ctx.roundRect(br.x, br.y, br.width, br.height, 4);
+                ctx.fill();
+                // G'isht cheti naqshi
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(br.x + 2, br.y + 2, br.width - 4, br.height - 4);
+                ctx.restore();
+            });
+
+            // 5. Kiber Boss (Level 4)
+            if (boss) {
+                ctx.save();
+                // Agar shikast yegan bo'lsa qizil yonadi
+                let bossColor = boss.flashTimer > 0 ? '#ffffff' : '#ff0055';
+                ctx.shadowBlur = boss.flashTimer > 0 ? 25 : 18;
+                ctx.shadowColor = bossColor;
+                ctx.fillStyle = bossColor;
+
+                // Boss tanasi
+                ctx.beginPath();
+                ctx.roundRect(boss.x, boss.y, boss.width, boss.height, 8);
+                ctx.fill();
+
+                // Boss ko'zlari / dekoratsiyasi
+                ctx.fillStyle = '#00f0ff';
+                ctx.fillRect(boss.x + 15, boss.y + 12, 12, 8);
+                ctx.fillRect(boss.x + boss.width - 27, boss.y + 12, 12, 8);
+
+                // Boss Health Bar
+                const barWidth = boss.width;
+                const hpPercent = boss.hp / boss.maxHp;
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+                ctx.fillRect(boss.x, boss.y - 12, barWidth, 5);
+                ctx.fillStyle = '#ff0055';
+                ctx.fillRect(boss.x, boss.y - 12, barWidth * hpPercent, 5);
+                ctx.restore();
+            }
+
+            // Boss o'qlari
+            bossBullets.forEach(b => {
+                ctx.save();
+                ctx.fillStyle = '#ff0055';
+                ctx.shadowBlur = 8;
+                ctx.shadowColor = '#ff0055';
+                ctx.beginPath();
+                ctx.arc(b.x, b.y, 4, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            });
+
+            // 6. Platforma (Paddle)
+            ctx.save();
+            let padColor = '#00f0ff';
+            if (paddle.laserActive) padColor = '#ff0055';
+            else if (paddle.magnetActive) padColor = '#ffff00';
+
+            ctx.shadowBlur = 18;
+            ctx.shadowColor = padColor;
+            ctx.fillStyle = padColor;
+            ctx.beginPath();
+            ctx.roundRect(paddle.x, paddle.y, paddle.width, paddle.height, 6);
+            ctx.fill();
+
+            // Laser qurollari vizuali
+            if (paddle.laserActive) {
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(paddle.x + 2, paddle.y - 5, 5, 5);
+                ctx.fillRect(paddle.x + paddle.width - 7, paddle.y - 5, 5, 5);
+            }
+            ctx.restore();
+
+            // 7. Lazer o'qlari
+            lasers.forEach(laser => {
+                ctx.save();
+                ctx.fillStyle = '#ff0055';
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = '#ff0055';
+                ctx.fillRect(laser.x - 1.5, laser.y, 3, 11);
+                ctx.restore();
+            });
+
+            // 8. To'plar (Balls)
+            balls.forEach(ball => {
+                // Ball Trail (Koptok orqasidagi iz)
+                ball.trail.forEach((t, index) => {
+                    ctx.save();
+                    ctx.globalAlpha = (index / ball.trail.length) * 0.45;
+                    ctx.fillStyle = ball.fireActive ? '#ff4400' : '#00ffff';
+                    ctx.beginPath();
+                    ctx.arc(t.x, t.y, ball.radius * 0.8, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                });
+
+                ctx.save();
+                // Alovli koptok rangini o'zgartirish
+                let ballColor = ball.fireActive ? '#ff3300' : '#ffffff';
+                ctx.fillStyle = ballColor;
+                ctx.shadowBlur = ball.fireActive ? 22 : 12;
+                ctx.shadowColor = ball.fireActive ? '#ff3300' : '#ff007f';
+                ctx.beginPath();
+                ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            });
+
+            // 9. Bonus kapsulalari (Power-ups)
+            powerups.forEach(pu => {
+                ctx.save();
+                let color = '#ffff00';
+                let label = 'W'; 
+                if (pu.type === 'triple') { color = '#ff00ff'; label = '3'; }
+                else if (pu.type === 'laser') { color = '#ff0055'; label = 'L'; }
+                else if (pu.type === 'slow') { color = '#00ffff'; label = 'S'; }
+                else if (pu.type === 'shield') { color = '#00ff88'; label = '🛡️'; }
+                else if (pu.type === 'fire') { color = '#ff4400'; label = '🔥'; }
+                else if (pu.type === 'magnet') { color = '#ffffff'; label = '🧲'; }
+
+                ctx.shadowBlur = 12;
+                ctx.shadowColor = color;
+                ctx.fillStyle = color;
+                ctx.beginPath();
+                ctx.roundRect(pu.x, pu.y, 14, 18, 5);
+                ctx.fill();
+
+                ctx.fillStyle = '#000000';
+                ctx.font = 'bold 11px Orbitron';
+                ctx.textAlign = 'center';
+                ctx.fillText(label, pu.x + 7, pu.y + 13);
+                ctx.restore();
+            });
+
+            // 10. Zarrachalar (Particles)
+            particles.forEach(p => {
+                ctx.save();
+                ctx.globalAlpha = p.alpha;
+                ctx.fillStyle = p.color;
+                ctx.shadowBlur = 8;
+                ctx.shadowColor = p.color;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            });
+        }
+
+        function drawOverlayScene() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        startBtn.addEventListener('click', () => {
+            document.getElementById('mini-leaderboard').innerHTML = '';
+            overlay.style.display = 'none';
+            initGame(level);
+        });
+
+        bossBtn.addEventListener('click', () => {
+            document.getElementById('mini-leaderboard').innerHTML = '';
+            overlay.style.display = 'none';
+            initGame(4);
+        });
+
+        window.addEventListener('load', () => {
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+            drawOverlayScene();
+            update();
+        });
+    </script>
+</body>
+</html>

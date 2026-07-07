@@ -1,0 +1,9 @@
+.env
+__pycache__/
+downloads/
+*.log
+*.json
+!users.json
+!revenue.json
+C:/
+C:\

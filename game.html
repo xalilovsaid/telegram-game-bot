@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Koinot Jangi 🚀 - Retro Video O'yin</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            background-color: #0b0b1e;
+            color: #fff;
+            font-family: 'Outfit', 'Inter', sans-serif;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            touch-action: none;
+        }
+        #game-container {
+            position: relative;
+            width: 100%;
+            max-width: 450px;
+            height: 100%;
+            max-height: 800px;
+            background: radial-gradient(circle, #18183c 0%, #080818 100%);
+            border: 2px solid #00f3ff;
+            box-shadow: 0 0 20px rgba(0, 243, 255, 0.3);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        canvas {
+            flex-grow: 1;
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        #ui-overlay {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 18px;
+            font-weight: bold;
+            text-shadow: 0 0 10px #00f3ff;
+            pointer-events: none;
+        }
+        #health-bar-container {
+            width: 100px;
+            height: 12px;
+            background-color: #111;
+            border: 1px solid #ff007f;
+            border-radius: 6px;
+            overflow: hidden;
+            box-shadow: 0 0 10px rgba(255, 0, 127, 0.3);
+        }
+        #health-bar {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, #ff0055, #ff007f);
+            transition: width 0.2s;
+        }
+        #menu-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(11, 11, 30, 0.9);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            padding: 20px;
+            text-align: center;
+        }
+        h1 {
+            font-size: 36px;
+            margin-bottom: 10px;
+            background: linear-gradient(45deg, #00f3ff, #ff007f);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 30px rgba(0, 243, 255, 0.5);
+            animation: pulse 2s infinite;
+        }
+        p {
+            color: #8c8caf;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        .btn {
+            background: linear-gradient(90deg, #00f3ff, #005fcc);
+            color: #fff;
+            border: none;
+            padding: 14px 40px;
+            font-size: 18px;
+            font-weight: bold;
+            border-radius: 30px;
+            cursor: pointer;
+            box-shadow: 0 0 15px rgba(0, 243, 255, 0.4);
+            transition: all 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 25px rgba(0, 243, 255, 0.7);
+        }
+        #controls {
+            position: absolute;
+            bottom: 30px;
+            left: 20px;
+            right: 20px;
+            display: flex;
+            justify-content: space-between;
+            z-index: 5;
+        }
+        .control-btn {
+            width: 70px;
+            height: 70px;
+            background: rgba(0, 243, 255, 0.15);
+            border: 2px solid #00f3ff;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #00f3ff;
+            font-size: 28px;
+            font-weight: bold;
+            box-shadow: 0 0 10px rgba(0, 243, 255, 0.2);
+            backdrop-filter: blur(5px);
+        }
+        .control-btn:active {
+            background: rgba(0, 243, 255, 0.4);
+            transform: scale(0.95);
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.03); }
+            100% { transform: scale(1); }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <!-- UI Overlay -->
+        <div id="ui-overlay">
+            <div>SCORE: <span id="score-val">0</span></div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span>HP:</span>
+                <div id="health-bar-container">
+                    <div id="health-bar"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Menu Screen -->
+        <div id="menu-screen">
+            <h1>KOINOT JANGI 🚀</h1>
+            <p>Kosmik kemani boshqaring va dushman kemalarini yo'q qiling! <br>Telefon ekranidagi tugmalar yoki klaviaturadagi chap/o'ng strelkalar orqali boshqariladi.</p>
+            <button class="btn" onclick="startGame()">Boshlash Play</button>
+        </div>
+
+        <!-- Game Canvas -->
+        <canvas id="gameCanvas"></canvas>
+
+        <!-- Touch Controls -->
+        <div id="controls">
+            <div class="control-btn" id="left-btn">◀</div>
+            <div class="control-btn" id="shoot-btn">🔥</div>
+            <div class="control-btn" id="right-btn">▶</div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Canvas o'lchamini moslashtirish
+        function resizeCanvas() {
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = canvas.parentElement.clientHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        let gameActive = false;
+        let score = 0;
+        let player;
+        let lasers = [];
+        let enemies = [];
+        let particles = [];
+        let enemySpawnInterval;
+        let keys = {};
+        
+        // Web Audio API sintizatori (ovozlar uchun)
+        let audioCtx;
+        function playSound(type) {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            
+            if (type === 'laser') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(150, audioCtx.currentTime + 0.15);
+                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.15);
+            } else if (type === 'explosion') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(180, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(10, audioCtx.currentTime + 0.3);
+                gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.3);
+            } else if (type === 'gameover') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(300, audioCtx.currentTime);
+                osc.frequency.linearRampToValueAtTime(100, audioCtx.currentTime + 0.8);
+                gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.8);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.8);
+            }
+        }
+
+        // Boshqaruv tugmalari sensorlari
+        let leftActive = false;
+        let rightActive = false;
+        let shootActive = false;
+
+        document.getElementById('left-btn').addEventListener('touchstart', (e) => { e.preventDefault(); leftActive = true; });
+        document.getElementById('left-btn').addEventListener('touchend', (e) => { e.preventDefault(); leftActive = false; });
+        document.getElementById('right-btn').addEventListener('touchstart', (e) => { e.preventDefault(); rightActive = true; });
+        document.getElementById('right-btn').addEventListener('touchend', (e) => { e.preventDefault(); rightActive = false; });
+        document.getElementById('shoot-btn').addEventListener('touchstart', (e) => { e.preventDefault(); player.shoot(); });
+
+        // Klaviatura hodisalari
+        window.addEventListener('keydown', (e) => { keys[e.code] = true; });
+        window.addEventListener('keyup', (e) => { keys[e.code] = false; });
+
+        class Player {
+            constructor() {
+                this.x = canvas.width / 2;
+                this.y = canvas.height - 130;
+                this.width = 40;
+                this.height = 30;
+                this.speed = 6;
+                this.health = 100;
+            }
+            draw() {
+                ctx.save();
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = '#00f3ff';
+                
+                // Kemani chizish (neon uchburchak kema)
+                ctx.fillStyle = '#00f3ff';
+                ctx.beginPath();
+                ctx.moveTo(this.x, this.y - this.height/2);
+                ctx.lineTo(this.x - this.width/2, this.y + this.height/2);
+                ctx.lineTo(this.x + this.width/2, this.y + this.height/2);
+                ctx.closePath();
+                ctx.fill();
+                
+                ctx.restore();
+            }
+            update() {
+                if (keys['ArrowLeft'] || leftActive) {
+                    this.x -= this.speed;
+                }
+                if (keys['ArrowRight'] || rightActive) {
+                    this.x += this.speed;
+                }
+                if (keys['Space']) {
+                    if (lasers.length === 0 || lasers[lasers.length - 1].y < this.y - 120) {
+                        this.shoot();
+                    }
+                }
+                // Ekran chegarasi
+                if (this.x < this.width/2) this.x = this.width/2;
+                if (this.x > canvas.width - this.width/2) this.x = canvas.width - this.width/2;
+            }
+            shoot() {
+                if (!gameActive) return;
+                lasers.push(new Laser(this.x, this.y - this.height/2));
+                playSound('laser');
+            }
+        }
+
+        class Laser {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.speed = 10;
+                this.width = 4;
+                this.height = 15;
+            }
+            draw() {
+                ctx.save();
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = '#00ff7f';
+                ctx.fillStyle = '#00ff7f';
+                ctx.fillRect(this.x - this.width/2, this.y, this.width, this.height);
+                ctx.restore();
+            }
+            update() {
+                this.y -= this.speed;
+            }
+        }
+
+        class Enemy {
+            constructor() {
+                this.x = randomRange(30, canvas.width - 30);
+                this.y = -30;
+                this.speed = randomRange(2, 4);
+                this.radius = randomRange(15, 25);
+                this.color = randomChoice(['#ff0055', '#ff00aa', '#ff007f']);
+            }
+            draw() {
+                ctx.save();
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = this.color;
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+            update() {
+                this.y += this.speed;
+            }
+        }
+
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x;
+                this.y = y;
+                this.color = color;
+                this.size = randomRange(2, 4);
+                this.speedX = randomRange(-3, 3);
+                this.speedY = randomRange(-3, 3);
+                this.alpha = 1;
+                this.decay = randomRange(0.015, 0.03);
+            }
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = this.alpha;
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+            update() {
+                this.x += this.speedX;
+                this.y += this.speedY;
+                this.alpha -= this.decay;
+            }
+        }
+
+        function createExplosion(x, y, color) {
+            for (let i = 0; i < 15; i++) {
+                particles.push(new Particle(x, y, color));
+            }
+            playSound('explosion');
+        }
+
+        function spawnEnemy() {
+            if (gameActive) {
+                enemies.push(new Enemy());
+            }
+        }
+
+        function startGame() {
+            document.getElementById('menu-screen').style.display = 'none';
+            score = 0;
+            document.getElementById('score-val').innerText = score;
+            player = new Player();
+            lasers = [];
+            enemies = [];
+            particles = [];
+            gameActive = true;
+            
+            // Audio context faollashtirish
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+
+            clearInterval(enemySpawnInterval);
+            enemySpawnInterval = setInterval(spawnEnemy, 1000);
+            
+            updateGame();
+        }
+
+        function gameOver() {
+            gameActive = false;
+            playSound('gameover');
+            clearInterval(enemySpawnInterval);
+            document.getElementById('menu-screen').style.display = 'flex';
+            document.querySelector('#menu-screen h1').innerHTML = "O'YIN TUGADI 💀";
+            document.querySelector('#menu-screen p').innerHTML = `Yakuniy ochko: <b>${score}</b><br><br>Qayta urinib ko'rish uchun tugmani bosing.`;
+        }
+
+        function updateGame() {
+            if (!gameActive) return;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Fon yulduzlari
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+            for (let i = 0; i < 20; i++) {
+                ctx.fillRect((i * 45) % canvas.width, (Date.now() / 10 + i * 80) % canvas.height, 2, 2);
+            }
+
+            // O'yinchi
+            player.draw();
+            player.update();
+
+            // Lazerlarni boshqarish
+            for (let i = lasers.length - 1; i >= 0; i--) {
+                lasers[i].draw();
+                lasers[i].update();
+
+                // Ekrandan chiqib ketganda o'chirish
+                if (lasers[i].y < 0) {
+                    lasers.splice(i, 1);
+                }
+            }
+
+            // Dushmanlarni boshqarish
+            for (let i = enemies.length - 1; i >= 0; i--) {
+                enemies[i].draw();
+                enemies[i].update();
+
+                // Lazer bilan to'qnashuv
+                for (let j = lasers.length - 1; j >= 0; j--) {
+                    let dist = Math.hypot(enemies[i].x - lasers[j].x, enemies[i].y - lasers[j].y);
+                    if (dist < enemies[i].radius) {
+                        createExplosion(enemies[i].x, enemies[i].y, enemies[i].color);
+                        score += 10;
+                        document.getElementById('score-val').innerText = score;
+                        enemies.splice(i, 1);
+                        lasers.splice(j, 1);
+                        break;
+                    }
+                }
+                
+                if (!enemies[i]) continue;
+
+                // O'yinchi kema bilan to'qnashuv
+                let distToPlayer = Math.hypot(enemies[i].x - player.x, enemies[i].y - player.y);
+                if (distToPlayer < enemies[i].radius + player.width/2) {
+                    createExplosion(enemies[i].x, enemies[i].y, enemies[i].color);
+                    player.health -= 25;
+                    document.getElementById('health-bar').style.width = player.health + '%';
+                    enemies.splice(i, 1);
+                    
+                    if (player.health <= 0) {
+                        gameOver();
+                    }
+                    continue;
+                }
+
+                // Chegaradan o'tganda
+                if (enemies[i].y > canvas.height) {
+                    enemies.splice(i, 1);
+                }
+            }
+
+            // Portlash zarralarini boshqarish
+            for (let i = particles.length - 1; i >= 0; i--) {
+                particles[i].draw();
+                particles[i].update();
+                if (particles[i].alpha <= 0) {
+                    particles.splice(i, 1);
+                }
+            }
+
+            requestAnimationFrame(updateGame);
+        }
+
+        // Yordamchi funksiyalar
+        function randomRange(min, max) {
+            return Math.random() * (max - min) + min;
+        }
+        function randomChoice(arr) {
+            return arr[Math.floor(Math.random() * arr.length)];
+        }
+    </script>
+</body>
+</html>

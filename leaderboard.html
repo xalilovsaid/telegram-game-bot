@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Reyting Peshlavhasi 🏆</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        body {
+            background-color: #040209;
+            color: #ffffff;
+            font-family: 'Rajdhani', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow-x: hidden;
+            background: radial-gradient(circle at top, #0f0d25 0%, #030207 100%);
+            padding-bottom: 90px; /* Joyi pastki sticky kartaga */
+        }
+
+        header {
+            width: 100%;
+            padding: 20px 15px;
+            text-align: center;
+            border-bottom: 2px solid #ff007f;
+            background: rgba(10, 8, 26, 0.95);
+            box-shadow: 0 4px 20px rgba(255, 0, 127, 0.2);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .header-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 22px;
+            font-weight: 900;
+            color: #00f0ff;
+            text-shadow: 0 0 10px rgba(0, 240, 255, 0.8);
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+        }
+
+        #leaderboard-container {
+            width: 100%;
+            max-width: 420px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        /* Top 3 Podium (🥇 🥈 🥉) */
+        .podium-container {
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            gap: 10px;
+            margin-top: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(0, 240, 255, 0.15);
+        }
+
+        .podium-card {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: rgba(15, 12, 35, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 12px 6px;
+            position: relative;
+            transition: transform 0.2s;
+        }
+
+        .podium-card:hover {
+            transform: translateY(-5px);
+        }
+
+        /* Oltin (1-o'rin) */
+        .podium-card.rank-1 {
+            height: 180px;
+            border-color: #ffd700;
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.25);
+            background: linear-gradient(180deg, rgba(255, 215, 0, 0.1) 0%, rgba(10, 8, 26, 0.8) 100%);
+        }
+
+        /* Kumush (2-o'rin) */
+        .podium-card.rank-2 {
+            height: 155px;
+            border-color: #c0c0c0;
+            box-shadow: 0 0 12px rgba(192, 192, 192, 0.2);
+            background: linear-gradient(180deg, rgba(192, 192, 192, 0.08) 0%, rgba(10, 8, 26, 0.8) 100%);
+        }
+
+        /* Bronza (3-o'rin) */
+        .podium-card.rank-3 {
+            height: 140px;
+            border-color: #cd7f32;
+            box-shadow: 0 0 10px rgba(205, 127, 50, 0.15);
+            background: linear-gradient(180deg, rgba(205, 127, 50, 0.08) 0%, rgba(10, 8, 26, 0.8) 100%);
+        }
+
+        .avatar-circle {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 18px;
+            color: #ffffff;
+            margin-bottom: 8px;
+            border: 2px solid;
+        }
+
+        .rank-1 .avatar-circle { background-color: #ffd700; border-color: #fff; color: #000; }
+        .rank-2 .avatar-circle { background-color: #888899; border-color: #c0c0c0; }
+        .rank-3 .avatar-circle { background-color: #a05a2c; border-color: #cd7f32; }
+
+        .medal-badge {
+            position: absolute;
+            top: -15px;
+            font-size: 22px;
+            filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.5));
+        }
+
+        .podium-name {
+            font-weight: 600;
+            font-size: 14px;
+            text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            width: 100%;
+            padding: 0 3px;
+        }
+
+        .podium-points {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 12px;
+            font-weight: 700;
+            color: #00f0ff;
+            margin-top: 4px;
+        }
+
+        .podium-ref {
+            font-size: 11px;
+            color: #8a8a9f;
+            margin-top: 2px;
+        }
+
+        /* Qolgan reyting jadvali */
+        .list-container {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .list-row {
+            display: flex;
+            align-items: center;
+            background: rgba(12, 10, 30, 0.8);
+            border: 1px solid rgba(0, 240, 255, 0.1);
+            border-radius: 8px;
+            padding: 10px 15px;
+            transition: border-color 0.2s, background 0.2s;
+        }
+
+        .list-row:hover {
+            border-color: rgba(0, 240, 255, 0.4);
+            background: rgba(18, 15, 45, 0.9);
+        }
+
+        /* Hozirgi foydalanuvchini ajratib ko'rsatish */
+        .list-row.highlighted {
+            border: 2px solid #ffd700;
+            background: rgba(45, 35, 10, 0.7);
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.2);
+        }
+
+        .row-rank {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 14px;
+            font-weight: 700;
+            color: #ff007f;
+            width: 35px;
+        }
+
+        .row-name {
+            font-weight: 600;
+            font-size: 15px;
+            flex-grow: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            padding-right: 10px;
+        }
+
+        .row-points {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 13px;
+            font-weight: 700;
+            color: #00f0ff;
+            text-shadow: 0 0 5px rgba(0, 240, 255, 0.4);
+        }
+
+        /* Pastki yopishqoq foydalanuvchi kartasi (Sticky footer) */
+        #my-sticky-rank {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: rgba(10, 8, 25, 0.98);
+            border-top: 2px solid #ffd700;
+            padding: 12px 25px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.6);
+            z-index: 100;
+        }
+
+        .my-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .my-rank-num {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 20px;
+            font-weight: 900;
+            color: #ffd700;
+            text-shadow: 0 0 8px rgba(255, 215, 0, 0.5);
+        }
+
+        .my-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .my-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            color: #888899;
+            letter-spacing: 0.5px;
+        }
+
+        .my-name {
+            font-size: 16px;
+            font-weight: 700;
+            color: #ffffff;
+        }
+
+        .my-points-val {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 17px;
+            font-weight: 900;
+            color: #ffd700;
+            text-shadow: 0 0 8px rgba(255, 215, 0, 0.5);
+        }
+
+        /* Yuklanish animatsiyasi */
+        #loader {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 250px;
+            gap: 15px;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(0, 240, 255, 0.1);
+            border-top-color: #00f0ff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="header-title">TOP O'YINCHILAR 🏆</div>
+    </header>
+
+    <div id="leaderboard-container">
+        <!-- Yuklanish indikatori -->
+        <div id="loader">
+            <div class="spinner"></div>
+            <p style="color: #888899; font-size: 14px;">Ma'lumotlar yuklanmoqda...</p>
+        </div>
+
+        <!-- Kuchli 3-lik Shoxsupasi (Podium) -->
+        <div class="podium-container" id="podium" style="display: none;">
+            <!-- JS dynamic fill -->
+        </div>
+
+        <!-- Qolgan o'yinchilar ro'yxati -->
+        <div class="list-container" id="leader-list" style="display: none;">
+            <!-- JS dynamic fill -->
+        </div>
+    </div>
+
+    <!-- Foydalanuvchining pastki shaxsiy paneli -->
+    <div id="my-sticky-rank" style="display: none;">
+        <div class="my-left">
+            <div class="my-rank-num" id="my-rank-val">#--</div>
+            <div class="my-info">
+                <span class="my-label">Sizning o'rningiz</span>
+                <span class="my-name" id="my-name-val">Siz</span>
+            </div>
+        </div>
+        <div class="my-points-val" id="my-points-val">0</div>
+    </div>
+
+    <script>
+        // Telegram WebApp sozlash
+        const tg = window.Telegram?.WebApp;
+        if (tg) {
+            tg.ready();
+            tg.expand();
+        }
+
+        // Telegram foydalanuvchisi ma'lumotlari
+        const tgUser = tg?.initDataUnsafe?.user || { id: 8833971710, first_name: "O'yinchi" }; // default / debug uchun
+        const currentUserId = tgUser.id;
+
+        async function loadLeaderboard() {
+            try {
+                const response = await fetch('/api/leaderboard');
+                if (!response.ok) throw new Error('API request failed');
+                const players = await response.json();
+                
+                document.getElementById('loader').style.display = 'none';
+                
+                if (players.length === 0) {
+                    document.getElementById('leaderboard-container').innerHTML += '<p style="text-align:center;color:#888899;margin-top:50px;">Hech qanday ma\'lumot topilmadi.</p>';
+                    return;
+                }
+
+                renderLeaderboard(players);
+            } catch (e) {
+                console.error(e);
+                document.getElementById('loader').innerHTML = '<p style="color:#ff0055;font-size:14px;">Ulanishda xatolik yuz berdi. Qayta yuklang.</p>';
+            }
+        }
+
+        function renderLeaderboard(players) {
+            const podiumEl = document.getElementById('podium');
+            const listEl = document.getElementById('leader-list');
+            const stickyEl = document.getElementById('my-sticky-rank');
+
+            // Top 3 o'yinchilarni aniqlash
+            const rank2 = players[1]; // 2-o'rin (chap)
+            const rank1 = players[0]; // 1-o'rin (markaz)
+            const rank3 = players[2]; // 3-o'rin (o'ng)
+
+            let myRank = 0;
+            let myPoints = 0;
+            let myName = tgUser.first_name || "Siz";
+
+            // Foydalanuvchining o'zini reytingdan qidirish
+            players.forEach((p, idx) => {
+                if (p.id == currentUserId || (p.name && p.name.includes(myName))) {
+                    myRank = idx + 1;
+                    myPoints = p.score || p.points || 0;
+                }
+            });
+
+            // Agar reytingda bo'lmasa, boshlang'ich ochkoni ko'rsatamiz
+            if (myRank === 0) {
+                myPoints = 0;
+            }
+
+            // 1. Podiumni chizish
+            let podiumHTML = "";
+            
+            // 2-o'rin
+            if (rank2) {
+                podiumHTML += `
+                    <div class="podium-card rank-2">
+                        <span class="medal-badge">🥈</span>
+                        <div class="avatar-circle">${(rank2.name || 'P').charAt(0).toUpperCase()}</div>
+                        <div class="podium-name">${rank2.name || 'Quruvchi'}</div>
+                        <div class="podium-points">${(rank2.score || rank2.points || 0).toLocaleString()}</div>
+                        <div class="podium-ref">👥 ${rank2.referrals_count || 0} ta</div>
+                    </div>
+                `;
+            }
+
+            // 1-o'rin
+            if (rank1) {
+                podiumHTML += `
+                    <div class="podium-card rank-1">
+                        <span class="medal-badge">🥇</span>
+                        <div class="avatar-circle">${(rank1.name || 'P').charAt(0).toUpperCase()}</div>
+                        <div class="podium-name">${rank1.name || 'Quruvchi'}</div>
+                        <div class="podium-points">${(rank1.score || rank1.points || 0).toLocaleString()}</div>
+                        <div class="podium-ref">👥 ${rank1.referrals_count || 0} ta</div>
+                    </div>
+                `;
+            }
+
+            // 3-o'rin
+            if (rank3) {
+                podiumHTML += `
+                    <div class="podium-card rank-3">
+                        <span class="medal-badge">🥉</span>
+                        <div class="avatar-circle">${(rank3.name || 'P').charAt(0).toUpperCase()}</div>
+                        <div class="podium-name">${rank3.name || 'Quruvchi'}</div>
+                        <div class="podium-points">${(rank3.score || rank3.points || 0).toLocaleString()}</div>
+                        <div class="podium-ref">👥 ${rank3.referrals_count || 0} ta</div>
+                    </div>
+                `;
+            }
+
+            podiumEl.innerHTML = podiumHTML;
+            podiumEl.style.display = 'flex';
+
+            // 2. Qolgan ro'yxat (ranks 4+)
+            let listHTML = "";
+            const remaining = players.slice(3);
+            
+            remaining.forEach((p, idx) => {
+                const rankNum = idx + 4;
+                const isMe = p.id == currentUserId || (p.name && p.name === myName);
+                const highlightClass = isMe ? 'highlighted' : '';
+                const vipTag = p.vip_status ? ' 🌟' : '';
+
+                listHTML += `
+                    <div class="list-row ${highlightClass}">
+                        <div class="row-rank">#${rankNum}</div>
+                        <div class="row-name">${p.name || 'Quruvchi'}${vipTag}</div>
+                        <div class="row-points">${(p.score || p.points || 0).toLocaleString()}</div>
+                    </div>
+                `;
+            });
+
+            listEl.innerHTML = listHTML;
+            listEl.style.display = 'flex';
+
+            // 3. Pastki sticky panel
+            document.getElementById('my-rank-val').innerText = myRank > 0 ? `#${myRank}` : '#--';
+            document.getElementById('my-name-val').innerText = myName;
+            document.getElementById('my-points-val').innerText = myPoints.toLocaleString();
+            stickyEl.style.display = 'flex';
+        }
+
+        window.addEventListener('load', loadLeaderboard);
+    </script>
+</body>
+</html>

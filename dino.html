@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Dino Run Neon 🦖</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            background-color: #050510;
+            color: #fff;
+            font-family: 'Outfit', sans-serif;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            touch-action: none;
+        }
+        #game-container {
+            position: relative;
+            width: 100%;
+            max-width: 450px;
+            height: 100%;
+            max-height: 800px;
+            background: #0d0d21;
+            border: 2px solid #ff007f;
+            box-shadow: 0 0 25px rgba(255, 0, 127, 0.25);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        canvas {
+            flex-grow: 1;
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            display: flex;
+            justify-content: space-between;
+            z-index: 5;
+            pointer-events: none;
+            font-weight: bold;
+            font-size: 18px;
+            text-shadow: 0 0 5px #ff007f;
+        }
+        #score-display {
+            color: #ff007f;
+        }
+        #hi-display {
+            color: #00ffff;
+        }
+        #game-over-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(5, 5, 16, 0.85);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            text-align: center;
+            padding: 20px;
+        }
+        h1 {
+            font-size: 32px;
+            margin-bottom: 20px;
+            background: linear-gradient(45deg, #ff007f, #00ffff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 20px rgba(255, 0, 127, 0.5);
+        }
+        .btn-restart {
+            background: linear-gradient(90deg, #ff007f, #ff00ff);
+            color: #fff;
+            border: none;
+            padding: 12px 35px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 25px;
+            cursor: pointer;
+            box-shadow: 0 0 15px rgba(255, 0, 127, 0.4);
+            text-transform: uppercase;
+        }
+        .btn-restart:active {
+            transform: scale(0.95);
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <div id="game-container">
+        <div id="ui">
+            <div>🏆 HI: <span id="hi-display">0</span></div>
+            <div>⚡ SCORE: <span id="score-display">0</span></div>
+        </div>
+
+        <div id="game-over-screen">
+            <h1>O'YIN TUGADI 🦖💥</h1>
+            <p id="go-score-text" style="color: #00f0ff; font-size: 18px; margin-bottom: 5px;"></p>
+            <div id="mini-leaderboard" style="width:90%;max-width:300px;margin:10px auto;"></div>
+            <button class="btn-restart" onclick="resetGame()">Qayta Boshlash 🔄</button>
+        </div>
+
+        <canvas id="gameCanvas"></canvas>
+    </div>
+
+    <script>
+        const tg = window.Telegram?.WebApp;
+        if (tg) { tg.ready(); }
+        const tgUser = tg?.initDataUnsafe?.user || { id: 0, first_name: "O'yinchi" };
+
+        async function submitAndShowLeaderboard(gameName, finalScore) {
+            // Submit score
+            try {
+                await fetch('/api/submit_score', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        user_id: tgUser.id,
+                        name: tgUser.first_name,
+                        game: gameName,
+                        score: finalScore
+                    })
+                });
+            } catch(e) { console.error('Submit error:', e); }
+
+            // Fetch leaderboard
+            try {
+                const resp = await fetch(`/api/leaderboard?game=${gameName}`);
+                const players = await resp.json();
+                renderMiniLeaderboard(players);
+            } catch(e) { console.error('Leaderboard error:', e); }
+        }
+
+        function renderMiniLeaderboard(players) {
+            const container = document.getElementById('mini-leaderboard');
+            if (!container) return;
+            const top10 = players.filter(p => p.score > 0).slice(0, 10);
+            if (top10.length === 0) {
+                container.innerHTML = '<p style="color:#8c8caf;font-size:13px;">Hali hech kim o\'ynamagan</p>';
+                return;
+            }
+            let html = '<div style="font-family:Orbitron,sans-serif;font-size:11px;color:#00f0ff;margin-bottom:6px;text-transform:uppercase;">🏆 TOP O\'YINCHILAR</div>';
+            html += '<div style="max-height:180px;overflow-y:auto;width:100%;">';
+            top10.forEach((p, i) => {
+                const medals = ['🥇','🥈','🥉'];
+                const medal = i < 3 ? medals[i] : `#${i+1}`;
+                const isMe = String(p.id) === String(tgUser.id);
+                const bg = isMe ? 'rgba(255,215,0,0.15)' : 'rgba(255,255,255,0.05)';
+                const border = isMe ? '1px solid #ffd700' : '1px solid rgba(255,255,255,0.08)';
+                html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 10px;margin:3px 0;border-radius:6px;background:${bg};border:${border};">`;
+                html += `<span style="color:#ff007f;font-weight:bold;min-width:28px;font-size:13px;">${medal}</span>`;
+                html += `<span style="flex:1;color:#fff;font-size:13px;padding:0 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${p.name || 'O\'yinchi'}</span>`;
+                html += `<span style="color:#00f0ff;font-weight:bold;font-size:13px;">${p.score.toLocaleString()}</span>`;
+                html += '</div>';
+            });
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const gameOverScreen = document.getElementById('game-over-screen');
+
+        function resizeCanvas() {
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = canvas.parentElement.clientHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        let gameActive = true;
+        let score = 0;
+        let highScore = parseInt(localStorage.getItem('dino_hi') || '0');
+        document.getElementById('hi-display').innerText = highScore;
+
+        let gravity = 0.6;
+        let gameSpeed = 5;
+
+        // Dino obyekti
+        let dino = {
+            x: 50,
+            y: 0,
+            originalHeight: 45,
+            width: 40,
+            height: 45,
+            vy: 0,
+            jumpForce: 12,
+            grounded: false,
+            isDuck: false,
+            frame: 0
+        };
+
+        let obstacles = [];
+        let particles = [];
+        let audioCtx;
+
+        // Custom skin check
+        const urlParams = new URLSearchParams(window.location.search);
+        const mySkin = urlParams.get('skin') || 'dino';
+
+        function playSound(type) {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            if (type === 'jump') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(400, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 0.12);
+                gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.12);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.12);
+            } else if (type === 'hit') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(180, audioCtx.currentTime);
+                osc.frequency.linearRampToValueAtTime(40, audioCtx.currentTime + 0.35);
+                gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.35);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.35);
+            }
+        }
+
+        // Boshqaruv
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' || e.code === 'ArrowUp') {
+                e.preventDefault();
+                jump();
+            }
+            if (e.code === 'ArrowDown') {
+                e.preventDefault();
+                duck(true);
+            }
+        });
+        window.addEventListener('keyup', (e) => {
+            if (e.code === 'ArrowDown') {
+                duck(false);
+            }
+        });
+
+        // Mobil sensorlari
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            // Ekranning yuqori yarmiga bosilganda sakraydi, pastki yarmiga egiladi
+            const touch = e.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            const touchY = touch.clientY - rect.top;
+            if (touchY < canvas.height / 2) {
+                jump();
+            } else {
+                duck(true);
+            }
+        });
+        canvas.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            duck(false);
+        });
+
+        function jump() {
+            if (dino.grounded && !dino.isDuck && gameActive) {
+                dino.vy = -dino.jumpForce;
+                dino.grounded = false;
+                playSound('jump');
+            }
+        }
+
+        function duck(active) {
+            dino.isDuck = active;
+            if (active) {
+                dino.height = dino.originalHeight / 1.6;
+            } else {
+                dino.height = dino.originalHeight;
+            }
+        }
+
+        function spawnObstacle() {
+            let size = Math.random() * 25 + 20;
+            let type = Math.random() > 0.45 ? 'cactus' : 'bird';
+            let obsY = type === 'cactus' ? canvas.height / 2 + 50 - size : canvas.height / 2 - 10 - Math.random() * 40;
+
+            obstacles.push({
+                x: canvas.width + size,
+                y: obsY,
+                width: size,
+                height: size,
+                type: type,
+                frame: 0
+            });
+        }
+
+        function createExplosion(x, y) {
+            for (let i = 0; i < 15; i++) {
+                particles.push({
+                    x: x,
+                    y: y,
+                    vx: (Math.random() - 0.5) * 6,
+                    vy: (Math.random() - 0.5) * 6 - 3,
+                    alpha: 1,
+                    color: '#ff007f',
+                    size: Math.random() * 4 + 2
+                });
+            }
+        }
+
+        function update() {
+            if (!gameActive) return;
+
+            score++;
+            document.getElementById('score-display').innerText = score;
+            gameSpeed = 5 + Math.floor(score / 500);
+
+            // Gravitatsiya
+            dino.vy += gravity;
+            dino.y += dino.vy;
+
+            // Zaminga tegishi
+            const groundY = canvas.height / 2 + 50;
+            if (dino.y + dino.height > groundY) {
+                dino.y = groundY - dino.height;
+                dino.vy = 0;
+                dino.grounded = true;
+            }
+
+            dino.frame += 0.15;
+
+            // To'siqlar yuborilishi
+            if (obstacles.length === 0 || obstacles[obstacles.length - 1].x < canvas.width - (Math.random() * 120 + 150)) {
+                spawnObstacle();
+            }
+
+            // To'siqlar yangilanishi
+            for (let i = obstacles.length - 1; i >= 0; i--) {
+                let o = obstacles[i];
+                o.x -= gameSpeed;
+                o.frame += 0.1;
+
+                // To'qnashuvni tekshirish
+                if (dino.x < o.x + o.width &&
+                    dino.x + dino.width > o.x &&
+                    dino.y < o.y + o.height &&
+                    dino.y + dino.height > o.y) {
+                    
+                    // Game Over
+                    gameActive = false;
+                    playSound('hit');
+                    createExplosion(dino.x + 20, dino.y + 20);
+                    gameOverScreen.style.display = 'flex';
+                    if (score > highScore) {
+                        highScore = score;
+                        localStorage.setItem('dino_hi', highScore);
+                        document.getElementById('hi-display').innerText = highScore;
+                    }
+                    document.getElementById('go-score-text').innerText = `Natija: ${score} ochko`;
+                    submitAndShowLeaderboard('dino', score);
+                }
+
+                if (o.x + o.width < 0) {
+                    obstacles.splice(i, 1);
+                }
+            }
+
+            // Zarrachalar yangilanishi
+            for (let i = particles.length - 1; i >= 0; i--) {
+                let p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.alpha -= 0.03;
+                if (p.alpha <= 0) particles.splice(i, 1);
+            }
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const groundY = canvas.height / 2 + 50;
+
+            // 1. Orqa neon osmon va yo'l
+            ctx.fillStyle = '#070719';
+            ctx.fillRect(0, 0, canvas.width, groundY);
+
+            ctx.fillStyle = '#0c0c2a';
+            ctx.fillRect(0, groundY, canvas.width, canvas.height - groundY);
+
+            // Neon Yer Chizig'i
+            ctx.strokeStyle = '#ff007f';
+            ctx.lineWidth = 3;
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = '#ff007f';
+            ctx.beginPath();
+            ctx.moveTo(0, groundY);
+            ctx.lineTo(canvas.width, groundY);
+            ctx.stroke();
+
+            // 2. DINONI CHIZISH
+            ctx.save();
+            ctx.translate(dino.x, dino.y);
+            ctx.shadowBlur = 15;
+
+            if (mySkin === 'dragon') {
+                ctx.shadowColor = '#ffd700';
+                ctx.fillStyle = '#ffd700'; // Golden Cyber Dragon!
+                
+                if (dino.isDuck) {
+                    ctx.fillRect(0, 10, dino.width, dino.height);
+                    ctx.fillStyle = '#ff3300';
+                    ctx.fillRect(dino.width - 10, 14, 3, 3);
+                    ctx.fillStyle = '#ffd700';
+                    ctx.fillRect(-8, 12, 10, 6);
+                } else {
+                    ctx.fillRect(5, 5, dino.width - 10, dino.height - 15);
+                    ctx.fillRect(dino.width - 15, -5, 18, 23);
+                    ctx.fillStyle = '#ff3300';
+                    ctx.fillRect(dino.width - 6, 2, 3, 3);
+                    
+                    ctx.fillStyle = '#ff6600';
+                    let wingOffset = Math.sin(dino.frame * 2.5) * 12;
+                    ctx.beginPath();
+                    ctx.moveTo(10, 15);
+                    ctx.lineTo(-4, 2 - wingOffset);
+                    ctx.lineTo(18, 15);
+                    ctx.fill();
+
+                    ctx.fillStyle = '#ffd700';
+                    let legOffset = Math.sin(dino.frame * 1.5) * 6;
+                    if (dino.grounded) {
+                        ctx.fillRect(8, dino.height - 10, 6, 10 + legOffset);
+                        ctx.fillRect(dino.width - 14, dino.height - 10, 6, 10 - legOffset);
+                    } else {
+                        ctx.fillRect(8, dino.height - 10, 6, 10);
+                        ctx.fillRect(dino.width - 14, dino.height - 10, 6, 10);
+                    }
+                }
+            } else {
+                ctx.shadowColor = '#00ffff';
+                ctx.fillStyle = '#00ffff';
+                if (dino.isDuck) {
+                    ctx.fillRect(0, 10, dino.width, dino.height);
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(dino.width - 10, 15, 3, 3);
+                } else {
+                    ctx.fillRect(5, 5, dino.width - 10, dino.height - 15);
+                    ctx.fillRect(dino.width - 15, 0, 15, 18);
+                    ctx.fillStyle = '#000000';
+                    ctx.fillRect(dino.width - 8, 5, 2, 2);
+
+                    ctx.fillStyle = '#00ffff';
+                    let legOffset = Math.sin(dino.frame * 1.5) * 6;
+                    if (dino.grounded) {
+                        ctx.fillRect(8, dino.height - 10, 6, 10 + legOffset);
+                        ctx.fillRect(dino.width - 14, dino.height - 10, 6, 10 - legOffset);
+                    } else {
+                        ctx.fillRect(8, dino.height - 10, 6, 10);
+                        ctx.fillRect(dino.width - 14, dino.height - 10, 6, 10);
+                    }
+                }
+            }
+            ctx.restore();
+
+            // 3. TO'SIQLARNI CHIZISH
+            for (let o of obstacles) {
+                ctx.save();
+                ctx.shadowBlur = 12;
+                ctx.shadowColor = '#ff007f';
+                ctx.fillStyle = '#ff007f';
+
+                if (o.type === 'cactus') {
+                    // Kaktus shakli
+                    ctx.fillRect(o.x + o.width/3, o.y, o.width/3, o.height);
+                    ctx.fillRect(o.x, o.y + o.height/3, o.width, o.height/5);
+                } else {
+                    // Uchuvchi qush shakli
+                    let wing = Math.sin(o.frame * 2.5) * (o.height / 2);
+                    ctx.beginPath();
+                    ctx.moveTo(o.x, o.y + o.height/2);
+                    ctx.lineTo(o.x + o.width/2, o.y + o.height/2 - wing);
+                    ctx.lineTo(o.x + o.width, o.y + o.height/2);
+                    ctx.lineTo(o.x + o.width/2, o.y + o.height/2 + wing);
+                    ctx.closePath();
+                    ctx.fill();
+                }
+                ctx.restore();
+            }
+
+            // 4. ZARRACHALARNI CHIZISH
+            for (let p of particles) {
+                ctx.save();
+                ctx.globalAlpha = p.alpha;
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI*2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        function resetGame() {
+            if (!gameActive) {
+                score = 0;
+                obstacles = [];
+                particles = [];
+                dino.y = canvas.height / 2;
+                dino.vy = 0;
+                gameOverScreen.style.display = 'none';
+                gameActive = true;
+                
+                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+            }
+        }
+
+        function loop() {
+            update();
+            draw();
+            requestAnimationFrame(loop);
+        }
+        loop();
+    </script>
+</body>
+</html>

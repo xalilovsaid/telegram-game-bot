@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Flappy Space-Ship 🛸</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            background-color: #04040c;
+            color: #fff;
+            font-family: 'Outfit', sans-serif;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            touch-action: none;
+        }
+        #game-container {
+            position: relative;
+            width: 100%;
+            max-width: 450px;
+            height: 100%;
+            max-height: 800px;
+            background: #09091b;
+            border: 2px solid #00ff66;
+            box-shadow: 0 0 25px rgba(0, 255, 102, 0.25);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        canvas {
+            flex-grow: 1;
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            display: flex;
+            justify-content: space-between;
+            z-index: 5;
+            pointer-events: none;
+            font-weight: bold;
+            font-size: 18px;
+            text-shadow: 0 0 5px #00ff66;
+        }
+        #score-display {
+            color: #00ff66;
+        }
+        #hi-display {
+            color: #ffd700;
+        }
+        #game-over-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(4, 4, 12, 0.85);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            text-align: center;
+            padding: 20px;
+        }
+        h1 {
+            font-size: 32px;
+            margin-bottom: 20px;
+            background: linear-gradient(45deg, #00ff66, #00ffff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 20px rgba(0, 255, 102, 0.5);
+        }
+        .btn-restart {
+            background: linear-gradient(90deg, #00ff66, #00cccc);
+            color: #04040c;
+            border: none;
+            padding: 12px 35px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 25px;
+            cursor: pointer;
+            box-shadow: 0 0 15px rgba(0, 255, 102, 0.4);
+            text-transform: uppercase;
+        }
+        .btn-restart:active {
+            transform: scale(0.95);
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <div id="game-container">
+        <div id="ui">
+            <div>🏆 HI: <span id="hi-display">0</span></div>
+            <div>🛸 SCORE: <span id="score-display">0</span></div>
+        </div>
+
+        <div id="game-over-screen">
+            <h1>KEMA PORTLADI 🛸💥</h1>
+            <p id="go-score-text" style="color: #00f0ff; font-size: 18px; margin-bottom: 5px;"></p>
+            <div id="mini-leaderboard" style="width:90%;max-width:300px;margin:10px auto;"></div>
+            <button class="btn-restart" onclick="resetGame()">Qayta Boshlash 🔄</button>
+        </div>
+
+        <canvas id="gameCanvas" onclick="flap()"></canvas>
+    </div>
+
+    <script>
+        const tg = window.Telegram?.WebApp;
+        if (tg) { tg.ready(); }
+        const tgUser = tg?.initDataUnsafe?.user || { id: 0, first_name: "O'yinchi" };
+
+        async function submitAndShowLeaderboard(gameName, finalScore) {
+            // Submit score
+            try {
+                await fetch('/api/submit_score', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        user_id: tgUser.id,
+                        name: tgUser.first_name,
+                        game: gameName,
+                        score: finalScore
+                    })
+                });
+            } catch(e) { console.error('Submit error:', e); }
+
+            // Fetch leaderboard
+            try {
+                const resp = await fetch(`/api/leaderboard?game=${gameName}`);
+                const players = await resp.json();
+                renderMiniLeaderboard(players);
+            } catch(e) { console.error('Leaderboard error:', e); }
+        }
+
+        function renderMiniLeaderboard(players) {
+            const container = document.getElementById('mini-leaderboard');
+            if (!container) return;
+            const top10 = players.filter(p => p.score > 0).slice(0, 10);
+            if (top10.length === 0) {
+                container.innerHTML = '<p style="color:#8c8caf;font-size:13px;">Hali hech kim o\'ynamagan</p>';
+                return;
+            }
+            let html = '<div style="font-family:Orbitron,sans-serif;font-size:11px;color:#00f0ff;margin-bottom:6px;text-transform:uppercase;">🏆 TOP O\'YINCHILAR</div>';
+            html += '<div style="max-height:180px;overflow-y:auto;width:100%;">';
+            top10.forEach((p, i) => {
+                const medals = ['🥇','🥈','🥉'];
+                const medal = i < 3 ? medals[i] : `#${i+1}`;
+                const isMe = String(p.id) === String(tgUser.id);
+                const bg = isMe ? 'rgba(255,215,0,0.15)' : 'rgba(255,255,255,0.05)';
+                const border = isMe ? '1px solid #ffd700' : '1px solid rgba(255,255,255,0.08)';
+                html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 10px;margin:3px 0;border-radius:6px;background:${bg};border:${border};">`;
+                html += `<span style="color:#ff007f;font-weight:bold;min-width:28px;font-size:13px;">${medal}</span>`;
+                html += `<span style="flex:1;color:#fff;font-size:13px;padding:0 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${p.name || 'O\'yinchi'}</span>`;
+                html += `<span style="color:#00f0ff;font-weight:bold;font-size:13px;">${p.score.toLocaleString()}</span>`;
+                html += '</div>';
+            });
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const gameOverScreen = document.getElementById('game-over-screen');
+
+        function resizeCanvas() {
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = canvas.parentElement.clientHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        let gameActive = true;
+        let score = 0;
+        let highScore = parseInt(localStorage.getItem('flappy_hi') || '0');
+        document.getElementById('hi-display').innerText = highScore;
+
+        let gravity = 0.4;
+        let ship = {
+            x: 80,
+            y: 200,
+            vy: 0,
+            width: 36,
+            height: 25,
+            jumpForce: 7.5,
+            angle: 0
+        };
+
+        // Ustunlar / To'siqlar
+        let pipes = [];
+        let particles = [];
+        let pipeGap = 135;
+        let pipeWidth = 50;
+        let pipeSpeed = 2.8;
+        let audioCtx;
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const mySkin = urlParams.get('skin') || 'ufo';
+
+        function playSound(type) {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            if (type === 'flap') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(300, audioCtx.currentTime);
+                osc.frequency.linearRampToValueAtTime(100, audioCtx.currentTime + 0.1);
+                gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.1);
+            } else if (type === 'score') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(880, audioCtx.currentTime); // A5
+                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.15);
+            } else if (type === 'hit') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(160, audioCtx.currentTime);
+                osc.frequency.linearRampToValueAtTime(30, audioCtx.currentTime + 0.4);
+                gain.gain.setValueAtTime(0.25, audioCtx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.4);
+            }
+        }
+
+        // Klaviatura yordamida flap
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' || e.code === 'ArrowUp') {
+                e.preventDefault();
+                flap();
+            }
+        });
+
+        function flap() {
+            if (!gameActive) return;
+
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+
+            ship.vy = -ship.jumpForce;
+            playSound('flap');
+        }
+
+        function spawnPipe() {
+            const minHeight = 60;
+            const maxHeight = canvas.height - pipeGap - minHeight - 100;
+            const topHeight = Math.random() * (maxHeight - minHeight) + minHeight;
+
+            pipes.push({
+                x: canvas.width,
+                topHeight: topHeight,
+                bottomY: topHeight + pipeGap,
+                passed: false
+            });
+        }
+
+        function createExplosion(x, y) {
+            for (let i = 0; i < 18; i++) {
+                particles.push({
+                    x: x,
+                    y: y,
+                    vx: (Math.random() - 0.5) * 8,
+                    vy: (Math.random() - 0.5) * 8 - 2,
+                    alpha: 1,
+                    color: '#00ff66',
+                    size: Math.random() * 4 + 2
+                });
+            }
+        }
+
+        function initGame() {
+            ship.y = 200;
+            ship.vy = 0;
+            pipes = [];
+            particles = [];
+            score = 0;
+            pipeSpeed = 2.8;
+            gameActive = true;
+            gameOverScreen.style.display = 'none';
+            document.getElementById('score-display').innerText = score;
+        }
+
+        function update() {
+            if (!gameActive) return;
+
+            // Kema gravitatsiyasi va burchagi
+            ship.vy += gravity;
+            ship.y += ship.vy;
+            ship.angle = Math.min(Math.PI / 6, Math.max(-Math.PI / 8, ship.vy * 0.05));
+
+            // Chegara tekshiruvi (yerga yoki tepaga tegish)
+            if (ship.y + ship.height > canvas.height || ship.y < 0) {
+                triggerGameOver();
+            }
+
+            // To'siqlar generatsiyasi
+            if (pipes.length === 0 || pipes[pipes.length - 1].x < canvas.width - 200) {
+                spawnPipe();
+            }
+
+            // To'siqlar harakati
+            for (let i = pipes.length - 1; i >= 0; i--) {
+                let p = pipes[i];
+                p.x -= pipeSpeed;
+
+                // To'qnashuvni tekshirish
+                if (ship.x < p.x + pipeWidth &&
+                    ship.x + ship.width > p.x &&
+                    (ship.y < p.topHeight || ship.y + ship.height > p.bottomY)) {
+                    
+                    triggerGameOver();
+                }
+
+                // Ball qo'shish
+                if (!p.passed && p.x + pipeWidth < ship.x) {
+                    p.passed = true;
+                    score++;
+                    playSound('score');
+                    document.getElementById('score-display').innerText = score;
+                    pipeSpeed = 2.8 + Math.floor(score / 10) * 0.3;
+                }
+
+                if (p.x + pipeWidth < 0) {
+                    pipes.splice(i, 1);
+                }
+            }
+
+            // Zarrachalar
+            for (let i = particles.length - 1; i >= 0; i--) {
+                let pt = particles[i];
+                pt.x += pt.vx;
+                pt.y += pt.vy;
+                pt.alpha -= 0.025;
+                if (pt.alpha <= 0) particles.splice(i, 1);
+            }
+        }
+
+        function triggerGameOver() {
+            gameActive = false;
+            playSound('hit');
+            createExplosion(ship.x + 18, ship.y + 12);
+            gameOverScreen.style.display = 'flex';
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('flappy_hi', highScore);
+                document.getElementById('hi-display').innerText = highScore;
+            }
+            document.getElementById('go-score-text').innerText = `Natija: ${score} ochko`;
+            submitAndShowLeaderboard('flappy', score);
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Fon yulduzlari chizilishi
+            ctx.fillStyle = '#060613';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.07)';
+            for (let i = 0; i < 25; i++) {
+                ctx.fillRect((i * 61) % canvas.width, (i * 97) % canvas.height, 2, 2);
+            }
+
+            // Ustunlar (Pipes) chizish
+            for (let p of pipes) {
+                ctx.save();
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = '#00ffff';
+                ctx.fillStyle = '#00ffff';
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 1.5;
+
+                // Yuqori ustun
+                ctx.fillRect(p.x, 0, pipeWidth, p.topHeight);
+                ctx.strokeRect(p.x, -2, pipeWidth, p.topHeight + 2);
+                ctx.fillRect(p.x - 3, p.topHeight - 15, pipeWidth + 6, 15); // ustun qopqog'i
+
+                // Pastki ustun
+                ctx.fillRect(p.x, p.bottomY, pipeWidth, canvas.height - p.bottomY);
+                ctx.strokeRect(p.x, p.bottomY, pipeWidth, canvas.height - p.bottomY + 2);
+                ctx.fillRect(p.x - 3, p.bottomY, pipeWidth + 6, 15); // ustun qopqog'i
+
+                ctx.restore();
+            }
+
+            // Kema chizish
+            ctx.save();
+            ctx.translate(ship.x + ship.width/2, ship.y + ship.height/2);
+            ctx.rotate(ship.angle);
+            ctx.shadowBlur = 15;
+
+            if (mySkin === 'rocket') {
+                ctx.shadowColor = '#ff3300';
+                
+                ctx.fillStyle = '#ff3300';
+                ctx.beginPath();
+                ctx.moveTo(ship.width/2, 0);
+                ctx.lineTo(ship.width/4, -ship.height/3);
+                ctx.lineTo(ship.width/4, ship.height/3);
+                ctx.closePath();
+                ctx.fill();
+
+                ctx.fillStyle = '#f0f0f0';
+                ctx.fillRect(-ship.width/2, -ship.height/3, ship.width*0.75, (ship.height*2)/3);
+
+                ctx.fillStyle = '#ff3300';
+                ctx.beginPath();
+                ctx.moveTo(-ship.width/2, -ship.height/3);
+                ctx.lineTo(-ship.width/2 - 5, -ship.height/2);
+                ctx.lineTo(-ship.width/4, -ship.height/3);
+                ctx.closePath();
+                ctx.fill();
+
+                ctx.beginPath();
+                ctx.moveTo(-ship.width/2, ship.height/3);
+                ctx.lineTo(-ship.width/2 - 5, ship.height/2);
+                ctx.lineTo(-ship.width/4, ship.height/3);
+                ctx.closePath();
+                ctx.fill();
+
+                ctx.fillStyle = '#00ffff';
+                ctx.beginPath();
+                ctx.arc(0, 0, 4, 0, Math.PI*2);
+                ctx.fill();
+
+                if (Math.random() > 0.3) {
+                    ctx.fillStyle = '#ff9900';
+                    ctx.beginPath();
+                    ctx.moveTo(-ship.width/2, -4);
+                    ctx.lineTo(-ship.width/2 - 15, 0);
+                    ctx.lineTo(-ship.width/2, 4);
+                    ctx.closePath();
+                    ctx.fill();
+                }
+            } else {
+                ctx.shadowColor = '#00ff66';
+                ctx.fillStyle = '#00ff66';
+                ctx.beginPath();
+                ctx.ellipse(0, 0, ship.width/2, ship.height/2, 0, 0, Math.PI*2);
+                ctx.fill();
+
+                ctx.fillStyle = '#00ffff';
+                ctx.beginPath();
+                ctx.arc(0, -4, 8, Math.PI, 0);
+                ctx.fill();
+
+                if (Math.random() > 0.4) {
+                    ctx.fillStyle = '#ff3366';
+                    ctx.beginPath();
+                    ctx.moveTo(-ship.width/2, 0);
+                    ctx.lineTo(-ship.width/2 - 10, -3);
+                    ctx.lineTo(-ship.width/2 - 10, 3);
+                    ctx.closePath();
+                    ctx.fill();
+                }
+            }
+
+            ctx.restore();
+
+            // Zarrachalar
+            for (let pt of particles) {
+                ctx.save();
+                ctx.globalAlpha = pt.alpha;
+                ctx.fillStyle = pt.color;
+                ctx.beginPath();
+                ctx.arc(pt.x, pt.y, pt.size, 0, Math.PI*2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        function resetGame() {
+            if (!gameActive) {
+                initGame();
+            }
+        }
+
+        function loop() {
+            update();
+            draw();
+            requestAnimationFrame(loop);
+        }
+        initGame();
+        loop();
+    </script>
+</body>
+</html>
