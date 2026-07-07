@@ -205,6 +205,7 @@ def get_back_keyboard():
 def get_games_keyboard():
     builder = InlineKeyboardBuilder()
     builder.button(text="Uy Qurish 🏡 (Video O'yin)", callback_data="game_house")
+    builder.button(text="Kiber Arena 🎯 (Video O'yin)", callback_data="game_arena")
     builder.button(text="Kiber Tetris 🧱 (Video O'yin)", callback_data="game_tetris")
     builder.button(text="Koinot Jangi 🚀 (Video O'yin)", callback_data="game_space")
     builder.button(text="Dino Run 🦖 (Video O'yin)", callback_data="game_dino")
@@ -687,6 +688,43 @@ async def start_game_tetris(callback: CallbackQuery):
     else:
         await callback.message.answer(
             text=tetris_text,
+            reply_markup=builder.as_markup(),
+            parse_mode="HTML"
+        )
+    await callback.answer()
+
+# --- Game 0d: Kiber Arena ---
+@dp.callback_query(F.data == "game_arena")
+async def start_game_arena(callback: CallbackQuery):
+    arena_text = (
+        f"🎯 <b>Kiber Arena (HTML5 Top-down Action Shooter)</b>\n\n"
+        f"Kompyuteringiz uchun ajoyib top-down (tepadan qarash) twin-stick otishma o'yini tayyorlandi!\n\n"
+        f"<b>Qanday o'ynash mumkin?</b>\n"
+        f"1️⃣ Quyidagi <b>'O'yinni Boshlash 🎯'</b> tugmasini bosib, uni brauzeringizda oching.\n"
+        f"2️⃣ <code>WASD</code> yoki strelkalar bilan harakatlaning, sichqoncha bilan mo'ljal oling va plasma otish uchun bosing!\n"
+        f"3️⃣ Dushmanlarni yo'q qiling, tushgan bonuslarni (Triple shot, Blast, Heal) oling va yuqori rekord o'rnating!\n\n"
+        f"Arenalardagi jangda o'zingizni ko'rsating! 💥"
+    )
+    
+    builder = InlineKeyboardBuilder()
+    builder.button(text="O'yinni Boshlash 🎯", url=f"{GAME_URL}/arena.html")
+    builder.button(text="Orqaga ⬅️", callback_data="btn_games_menu")
+    builder.adjust(1)
+    
+    await callback.message.delete()
+    
+    photo_path = os.path.join(os.path.dirname(__file__), "q1.png")
+    if os.path.exists(photo_path):
+        photo = FSInputFile(photo_path)
+        await callback.message.answer_photo(
+            photo=photo,
+            caption=arena_text,
+            reply_markup=builder.as_markup(),
+            parse_mode="HTML"
+        )
+    else:
+        await callback.message.answer(
+            text=arena_text,
             reply_markup=builder.as_markup(),
             parse_mode="HTML"
         )

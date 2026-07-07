@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Kiber Arena 🎯 - Cyber Top-Down Shooter</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            background-color: #040209;
+            color: #fff;
+            font-family: 'Rajdhani', sans-serif;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background: radial-gradient(circle at center, #0f0d25 0%, #030207 100%);
+            touch-action: none;
+        }
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            background: #060515;
+            border: 2px solid #00f3ff;
+            box-shadow: 0 0 30px rgba(0, 243, 255, 0.2);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        @media (min-width: 800px) {
+            #game-container {
+                width: 960px;
+                height: 540px;
+                border-radius: 12px;
+            }
+        }
+        canvas {
+            flex-grow: 1;
+            width: 100%;
+            height: 100%;
+            display: block;
+            cursor: crosshair;
+        }
+        #ui-overlay {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            right: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 16px;
+            font-weight: bold;
+            text-shadow: 0 0 10px #00f3ff;
+            pointer-events: none;
+            z-index: 5;
+        }
+        .ui-item {
+            background: rgba(10, 8, 26, 0.6);
+            padding: 5px 12px;
+            border: 1px solid rgba(0, 243, 255, 0.2);
+            border-radius: 6px;
+            backdrop-filter: blur(5px);
+        }
+        #health-bar-container {
+            width: 100px;
+            height: 12px;
+            background-color: #111;
+            border: 1px solid #ff007f;
+            border-radius: 6px;
+            overflow: hidden;
+            display: inline-block;
+            vertical-align: middle;
+            margin-left: 8px;
+            box-shadow: 0 0 10px rgba(255, 0, 127, 0.3);
+        }
+        #health-bar {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, #ff0055, #ff007f);
+            transition: width 0.2s;
+        }
+        #menu-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(6, 5, 18, 0.95);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            padding: 20px;
+            text-align: center;
+        }
+        h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 32px;
+            margin-bottom: 8px;
+            background: linear-gradient(45deg, #00f3ff, #ff007f);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 30px rgba(0, 243, 255, 0.5);
+        }
+        p.desc {
+            color: #8c8caf;
+            margin-bottom: 15px;
+            font-size: 13px;
+            max-width: 480px;
+            line-height: 1.4;
+        }
+        .btn {
+            background: linear-gradient(90deg, #00f3ff, #ff007f);
+            color: #fff;
+            border: none;
+            padding: 12px 36px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 16px;
+            font-weight: 700;
+            border-radius: 25px;
+            cursor: pointer;
+            box-shadow: 0 0 15px rgba(0, 243, 255, 0.4);
+            transition: all 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 10px;
+        }
+        .btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 25px rgba(0, 243, 255, 0.7);
+        }
+        #controls-info {
+            font-size: 12px;
+            color: #555577;
+            margin-top: 12px;
+        }
+        #mini-leaderboard {
+            width: 100%;
+            max-width: 320px;
+            margin: 15px auto;
+        }
+
+        /* Mobile Touch Controls warning */
+        #mobile-warning {
+            display: none;
+            color: #ff007f;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+        @media (max-width: 800px) {
+            #mobile-warning {
+                display: block; /* Mobil ekranlarda kompyuter haqida bildirishnoma */
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <!-- UI Overlay -->
+        <div id="ui-overlay">
+            <div class="ui-item">SCORE: <span id="score-val">0</span></div>
+            <div class="ui-item">WEAPON: <span id="weapon-val" style="color: #ff007f;">PLASMA</span></div>
+            <div class="ui-item" style="display: flex; align-items: center;">
+                <span>HP:</span>
+                <div id="health-bar-container">
+                    <div id="health-bar"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Menu Screen -->
+        <div id="menu-screen">
+            <h1 id="menu-title">KIBER ARENA 🎯</h1>
+            <p class="desc" id="menu-desc">Top-down (tepadan qarash) jangovar otish o'yini! <br>Boshqarish: WASD / Strelkalar (Harakat), Sichqoncha harakati (Mo'ljal), Sichqoncha bosilishi (Otish).</p>
+            <div id="mini-leaderboard"></div>
+            <button class="btn" id="start-btn" onclick="startGame()">Boshlash Play</button>
+            <div id="controls-info">Kompyuterda sichqoncha va klaviatura yordamida o'ynaladi 💻🖱️</div>
+            <div id="mobile-warning">Eslatma: Ushbu o'yin kompyuter uchun mo'ljallangan!</div>
+        </div>
+
+        <!-- Game Canvas -->
+        <canvas id="gameCanvas"></canvas>
+    </div>
+
+    <script>
+        const tg = window.Telegram?.WebApp;
+        if (tg) { tg.ready(); }
+        const tgUser = tg?.initDataUnsafe?.user || { id: 8833971710, first_name: "O'yinchi" };
+
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const menuScreen = document.getElementById('menu-screen');
+        const menuTitle = document.getElementById('menu-title');
+        const menuDesc = document.getElementById('menu-desc');
+        const startBtn = document.getElementById('start-btn');
+        const healthBar = document.getElementById('health-bar');
+        const scoreVal = document.getElementById('score-val');
+        const weaponVal = document.getElementById('weapon-val');
+
+        function resizeCanvas() {
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = canvas.parentElement.clientHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        let gameActive = false;
+        let score = 0;
+        let player;
+        let bullets = [];
+        let enemies = [];
+        let particles = [];
+        let powerups = [];
+        let enemySpawnInterval;
+        let powerupSpawnInterval;
+        let keys = {};
+        let mouseX = 0;
+        let mouseY = 0;
+        let isMouseDown = false;
+        let audioCtx;
+
+        // Sichqoncha hodisalari
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            mouseX = e.clientX - rect.left;
+            mouseY = e.clientY - rect.top;
+        });
+        canvas.addEventListener('mousedown', () => { isMouseDown = true; });
+        canvas.addEventListener('mouseup', () => { isMouseDown = false; });
+        window.addEventListener('keydown', (e) => { keys[e.code] = true; });
+        window.addEventListener('keyup', (e) => { keys[e.code] = false; });
+
+        // Touch aiming (mobile fallback)
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            mouseX = e.touches[0].clientX - rect.left;
+            mouseY = e.touches[0].clientY - rect.top;
+            isMouseDown = true;
+        });
+        canvas.addEventListener('touchend', () => { isMouseDown = false; });
+
+        // Web Audio API ovoz sintezi
+        function playSound(type) {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            
+            if (type === 'laser') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(400, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 0.1);
+                gain.gain.setValueAtTime(0.06, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.1);
+            } else if (type === 'laser_triple') {
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(500, audioCtx.currentTime);
+                osc.frequency.linearRampToValueAtTime(900, audioCtx.currentTime + 0.08);
+                gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.08);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.08);
+            } else if (type === 'explosion') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(20, audioCtx.currentTime + 0.22);
+                gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.22);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.22);
+            } else if (type === 'powerup') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(300, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(1200, audioCtx.currentTime + 0.2);
+                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.2);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.2);
+            } else if (type === 'gameover') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(200, audioCtx.currentTime);
+                osc.frequency.linearRampToValueAtTime(40, audioCtx.currentTime + 0.7);
+                gain.gain.setValueAtTime(0.25, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.7);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.7);
+            }
+        }
+
+        // Leaderboard API integratsiyasi
+        async function submitAndShowLeaderboard(gameName, finalScore) {
+            try {
+                await fetch('/api/submit_score', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        user_id: tgUser.id,
+                        name: tgUser.first_name,
+                        game: gameName,
+                        score: finalScore
+                    })
+                });
+            } catch(e) { console.error('Submit error:', e); }
+
+            try {
+                const resp = await fetch(`/api/leaderboard?game=${gameName}`);
+                const players = await resp.json();
+                renderMiniLeaderboard(players);
+            } catch(e) { console.error('Leaderboard error:', e); }
+        }
+
+        function renderMiniLeaderboard(players) {
+            const container = document.getElementById('mini-leaderboard');
+            if (!container) return;
+            const top10 = players.filter(p => p.score > 0).slice(0, 5);
+            if (top10.length === 0) {
+                container.innerHTML = '<p style="color:#8c8caf;font-size:12px;">Hozircha peshqadamlar yo\'q.</p>';
+                return;
+            }
+            let html = '<div style="font-family:Orbitron,sans-serif;font-size:11px;color:#00f3ff;margin-bottom:6px;text-transform:uppercase;">🏆 TOP KIBER ARENA</div>';
+            html += '<div style="max-height:120px;overflow-y:auto;width:100%;">';
+            top10.forEach((p, i) => {
+                const medals = ['🥇','🥈','🥉'];
+                const medal = i < 3 ? medals[i] : `#${i+1}`;
+                const isMe = String(p.id) === String(tgUser.id);
+                const bg = isMe ? 'rgba(255,215,0,0.15)' : 'rgba(255,255,255,0.05)';
+                const border = isMe ? '1px solid #ffd700' : '1px solid rgba(255,255,255,0.08)';
+                html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 8px;margin:2px 0;border-radius:4px;background:${bg};border:${border};">`;
+                html += `<span style="color:#ff007f;font-weight:bold;font-size:12px;">${medal}</span>`;
+                html += `<span style="flex:1;color:#fff;font-size:12px;padding:0 5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left;">${p.name || 'Jangchi'}</span>`;
+                html += `<span style="color:#00f3ff;font-weight:bold;font-size:12px;">${p.score.toLocaleString()}</span>`;
+                html += '</div>';
+            });
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        class Player {
+            constructor() {
+                this.x = canvas.width / 2;
+                this.y = canvas.height / 2;
+                this.radius = 16;
+                this.speed = 4.5;
+                this.health = 100;
+                this.weapon = "PLASMA"; // PLASMA, TRIPLE, BLAST
+                this.weaponTimer = 0;
+                this.lastShotTime = 0;
+                this.shotCooldown = 150; // ms
+            }
+            draw() {
+                ctx.save();
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = '#00f3ff';
+                
+                // O'yinchi aylanasi
+                ctx.fillStyle = '#00f3ff';
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2);
+                ctx.fill();
+
+                // Qurol stvoli (sichqonchaga qaratilgan chiziq)
+                const angle = Math.atan2(mouseY - this.y, mouseX - this.x);
+                ctx.strokeStyle = '#ff007f';
+                ctx.lineWidth = 4;
+                ctx.beginPath();
+                ctx.moveTo(this.x, this.y);
+                ctx.lineTo(this.x + Math.cos(angle) * 24, this.y + Math.sin(angle) * 24);
+                ctx.stroke();
+
+                ctx.restore();
+            }
+            update() {
+                // Harakat (WASD / Strelkalar)
+                if (keys['KeyW'] || keys['ArrowUp']) this.y -= this.speed;
+                if (keys['KeyS'] || keys['ArrowDown']) this.y += this.speed;
+                if (keys['KeyA'] || keys['ArrowLeft']) this.x -= this.speed;
+                if (keys['KeyD'] || keys['ArrowRight']) this.x += this.speed;
+
+                // Chegaralar
+                if (this.x < this.radius) this.x = this.radius;
+                if (this.x > canvas.width - this.radius) this.x = canvas.width - this.radius;
+                if (this.y < this.radius) this.y = this.radius;
+                if (this.y > canvas.height - this.radius) this.y = canvas.height - this.radius;
+
+                // Vaqtinchalik qurol muddati
+                if (this.weapon !== "PLASMA") {
+                    this.weaponTimer--;
+                    if (this.weaponTimer <= 0) {
+                        this.weapon = "PLASMA";
+                        weaponVal.innerText = "PLASMA";
+                        weaponVal.style.color = "#ff007f";
+                    }
+                }
+
+                // Avtomatik otish (sichqoncha bosib turilganda)
+                if (isMouseDown && Date.now() - this.lastShotTime > this.shotCooldown) {
+                    this.shoot();
+                }
+            }
+            shoot() {
+                const angle = Math.atan2(mouseY - this.y, mouseX - this.x);
+                this.lastShotTime = Date.now();
+
+                if (this.weapon === "PLASMA") {
+                    bullets.push(new Bullet(this.x, this.y, angle, '#ff007f'));
+                    playSound('laser');
+                } else if (this.weapon === "TRIPLE") {
+                    bullets.push(new Bullet(this.x, this.y, angle, '#ffd700'));
+                    bullets.push(new Bullet(this.x, this.y, angle - 0.2, '#ffd700'));
+                    bullets.push(new Bullet(this.x, this.y, angle + 0.2, '#ffd700'));
+                    playSound('laser_triple');
+                } else if (this.weapon === "BLAST") {
+                    // Ko'p yo'nalishli shrapnel
+                    for (let i = 0; i < 8; i++) {
+                        bullets.push(new Bullet(this.x, this.y, angle + (i * Math.PI / 4), '#00ff7f'));
+                    }
+                    playSound('laser_triple');
+                }
+            }
+        }
+
+        class Bullet {
+            constructor(x, y, angle, color) {
+                this.x = x;
+                this.y = y;
+                this.angle = angle;
+                this.color = color;
+                this.speed = 10;
+                this.radius = 4;
+            }
+            draw() {
+                ctx.save();
+                ctx.shadowBlur = 8;
+                ctx.shadowColor = this.color;
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2);
+                ctx.fill();
+                ctx.restore();
+            }
+            update() {
+                this.x += Math.cos(this.angle) * this.speed;
+                this.y += Math.sin(this.angle) * this.speed;
+            }
+        }
+
+        class Enemy {
+            constructor() {
+                // Ekran chetlaridan birida paydo bo'lish
+                const edge = Math.floor(Math.random() * 4);
+                if (edge === 0) { // Top
+                    this.x = Math.random() * canvas.width;
+                    this.y = -20;
+                } else if (edge === 1) { // Right
+                    this.x = canvas.width + 20;
+                    this.y = Math.random() * canvas.height;
+                } else if (edge === 2) { // Bottom
+                    this.x = Math.random() * canvas.width;
+                    this.y = canvas.height + 20;
+                } else { // Left
+                    this.x = -20;
+                    this.y = Math.random() * canvas.height;
+                }
+
+                this.radius = Math.random() * 6 + 10;
+                this.speed = Math.random() * 1.5 + 1.2;
+                this.color = randomChoice(['#ff0055', '#ff00aa', '#ff007f']);
+                this.hp = Math.ceil(this.radius / 5); // kattaroq dushman ko'proq HP ga ega
+            }
+            draw() {
+                ctx.save();
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = this.color;
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2);
+                ctx.fill();
+                ctx.restore();
+            }
+            update() {
+                // O'yinchi tomon harakatlanish
+                const angle = Math.atan2(player.y - this.y, player.x - this.x);
+                this.x += Math.cos(angle) * this.speed;
+                this.y += Math.sin(angle) * this.speed;
+            }
+        }
+
+        class PowerUp {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.type = randomChoice(['TRIPLE', 'BLAST', 'HEAL']);
+                this.radius = 8;
+                this.color = this.type === 'HEAL' ? '#00ff7f' : '#ffd700';
+            }
+            draw() {
+                ctx.save();
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = this.color;
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x;
+                this.y = y;
+                this.color = color;
+                this.size = Math.random() * 3 + 1.5;
+                this.speedX = (Math.random() - 0.5) * 6;
+                this.speedY = (Math.random() - 0.5) * 6;
+                this.alpha = 1;
+                this.decay = Math.random() * 0.03 + 0.02;
+            }
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = this.alpha;
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI*2);
+                ctx.fill();
+                ctx.restore();
+            }
+            update() {
+                this.x += this.speedX;
+                this.y += this.speedY;
+                this.alpha -= this.decay;
+            }
+        }
+
+        function createExplosion(x, y, color) {
+            for (let i = 0; i < 12; i++) {
+                particles.push(new Particle(x, y, color));
+            }
+            playSound('explosion');
+        }
+
+        function spawnEnemy() {
+            if (gameActive) {
+                enemies.push(new Enemy());
+            }
+        }
+
+        function startGame() {
+            document.getElementById('mini-leaderboard').innerHTML = '';
+            menuScreen.style.display = 'none';
+            score = 0;
+            scoreVal.innerText = score;
+            healthBar.style.width = '100%';
+            player = new Player();
+            bullets = [];
+            enemies = [];
+            particles = [];
+            powerups = [];
+            gameActive = true;
+
+            clearInterval(enemySpawnInterval);
+            enemySpawnInterval = setInterval(spawnEnemy, 1000);
+            
+            updateGameLoop();
+        }
+
+        function gameOver() {
+            gameActive = false;
+            playSound('gameover');
+            clearInterval(enemySpawnInterval);
+            
+            menuScreen.style.display = 'flex';
+            menuTitle.innerHTML = "🏁 ARENADA MAG'LUBIYAT";
+            menuDesc.innerHTML = `Siz kiber-arenalik dushmanlar tomonidan yo'q qilindingiz! 💥<br>Siz to'plagan ochko: <b>${score}</b>`;
+            startBtn.innerText = "Qayta Jang Boshlash";
+            
+            submitAndShowLeaderboard('arena', score);
+        }
+
+        function updateGameLoop() {
+            if (!gameActive) return;
+
+            // 1. Arenani tozalash va to'r chizish (Cyber grid)
+            ctx.fillStyle = '#060515';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.strokeStyle = 'rgba(0, 243, 255, 0.05)';
+            ctx.lineWidth = 1;
+            const gridSize = 40;
+            for (let x = 0; x < canvas.width; x += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvas.height);
+                ctx.stroke();
+            }
+            for (let y = 0; y < canvas.height; y += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvas.width, y);
+                ctx.stroke();
+            }
+
+            // 2. O'yinchi yangilash
+            player.draw();
+            player.update();
+
+            // 3. Lazerlarni yangilash
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                bullets[i].draw();
+                bullets[i].update();
+                
+                // Ekrandan chiqib ketganlarni o'chirish
+                if (bullets[i].x < 0 || bullets[i].x > canvas.width || bullets[i].y < 0 || bullets[i].y > canvas.height) {
+                    bullets.splice(i, 1);
+                }
+            }
+
+            // 4. PowerUp yangilash
+            for (let i = powerups.length - 1; i >= 0; i--) {
+                powerups[i].draw();
+                
+                // O'yinchi bilan to'qnashuv
+                let dist = Math.hypot(powerups[i].x - player.x, powerups[i].y - player.y);
+                if (dist < player.radius + powerups[i].radius) {
+                    playSound('powerup');
+                    
+                    if (powerups[i].type === 'HEAL') {
+                        player.health = Math.min(100, player.health + 30);
+                        healthBar.style.width = player.health + '%';
+                    } else {
+                        player.weapon = powerups[i].type;
+                        player.weaponTimer = 300; // 300 kadr davomiylik
+                        weaponVal.innerText = powerups[i].type;
+                        weaponVal.style.color = "#ffd700";
+                    }
+                    
+                    powerups.splice(i, 1);
+                }
+            }
+
+            // 5. Dushmanlar yangilash va to'qnashuvlar
+            for (let i = enemies.length - 1; i >= 0; i--) {
+                enemies[i].draw();
+                enemies[i].update();
+
+                // Lazer dushmanga tekkanida
+                for (let j = bullets.length - 1; j >= 0; j--) {
+                    let dist = Math.hypot(enemies[i].x - bullets[j].x, enemies[i].y - bullets[j].y);
+                    if (dist < enemies[i].radius + bullets[j].radius) {
+                        enemies[i].hp--;
+                        bullets.splice(j, 1);
+                        
+                        if (enemies[i].hp <= 0) {
+                            createExplosion(enemies[i].x, enemies[i].y, enemies[i].color);
+                            score += 15;
+                            scoreVal.innerText = score;
+
+                            // 10% imkoniyat bilan PowerUp tushadi
+                            if (Math.random() < 0.12) {
+                                powerups.push(new PowerUp(enemies[i].x, enemies[i].y));
+                            }
+                            
+                            enemies.splice(i, 1);
+                            break;
+                        }
+                    }
+                }
+                
+                if (!enemies[i]) continue;
+
+                // O'yinchi bilan dushman to'qnashuvi
+                let distToPlayer = Math.hypot(enemies[i].x - player.x, enemies[i].y - player.y);
+                if (distToPlayer < enemies[i].radius + player.radius) {
+                    createExplosion(enemies[i].x, enemies[i].y, enemies[i].color);
+                    player.health -= 20;
+                    healthBar.style.width = player.health + '%';
+                    enemies.splice(i, 1);
+                    
+                    if (player.health <= 0) {
+                        gameOver();
+                    }
+                }
+            }
+
+            // 6. Zarrachalar
+            for (let i = particles.length - 1; i >= 0; i--) {
+                particles[i].draw();
+                particles[i].update();
+                if (particles[i].alpha <= 0) {
+                    particles.splice(i, 1);
+                }
+            }
+
+            requestAnimationFrame(updateGameLoop);
+        }
+
+        function randomChoice(arr) {
+            return arr[Math.floor(Math.random() * arr.length)];
+        }
+
+        window.addEventListener('load', () => {
+            submitAndShowLeaderboard('arena', 0);
+        });
+    </script>
+</body>
+</html>
