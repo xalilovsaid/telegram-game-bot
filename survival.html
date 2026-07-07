@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Kiber Survival 🎯 - Online Multiplayer Battle</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            background-color: #040209;
+            color: #fff;
+            font-family: 'Rajdhani', sans-serif;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background: radial-gradient(circle at center, #0f0d25 0%, #030207 100%);
+            touch-action: none;
+        }
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            background: #060515;
+            border: 2px solid #ff007f;
+            box-shadow: 0 0 30px rgba(255, 0, 127, 0.2);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        @media (min-width: 800px) {
+            #game-container {
+                width: 960px;
+                height: 540px;
+                border-radius: 12px;
+            }
+        }
+        canvas {
+            flex-grow: 1;
+            width: 100%;
+            height: 100%;
+            display: block;
+            cursor: crosshair;
+        }
+        
+        /* UI HUD Overlay */
+        #hud {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            right: 15px;
+            display: flex;
+            justify-content: space-between;
+            pointer-events: none;
+            z-index: 5;
+            font-family: 'Orbitron', sans-serif;
+        }
+        .hud-panel {
+            background: rgba(10, 8, 26, 0.7);
+            border: 1px solid rgba(0, 243, 255, 0.2);
+            border-radius: 8px;
+            padding: 8px 12px;
+            backdrop-filter: blur(5px);
+        }
+        .bar-container {
+            width: 120px;
+            height: 10px;
+            background: #111;
+            border-radius: 5px;
+            overflow: hidden;
+            margin-top: 4px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .hp-bar { background: linear-gradient(90deg, #ff0055, #ff007f); width: 100%; height: 100%; transition: width 0.1s; }
+        .shield-bar { background: linear-gradient(90deg, #00f3ff, #005fcc); width: 0%; height: 100%; transition: width 0.1s; }
+
+        /* Kill Feed */
+        #kill-feed {
+            position: absolute;
+            top: 70px;
+            right: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            pointer-events: none;
+            z-index: 5;
+            font-size: 13px;
+        }
+        .kill-msg {
+            background: rgba(255, 0, 127, 0.15);
+            border: 1px solid rgba(255, 0, 127, 0.4);
+            border-radius: 4px;
+            padding: 4px 8px;
+            animation: fadeOut 4s forwards;
+            font-weight: bold;
+        }
+
+        /* Leaderboard */
+        #leaderboard {
+            position: absolute;
+            top: 70px;
+            left: 15px;
+            background: rgba(10, 8, 26, 0.7);
+            border: 1px solid rgba(0, 243, 255, 0.15);
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-size: 13px;
+            pointer-events: none;
+            z-index: 5;
+            min-width: 140px;
+        }
+        .leader-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 2px 0;
+        }
+
+        /* Login Screen */
+        #login-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(6, 5, 18, 0.96);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            padding: 20px;
+            text-align: center;
+        }
+        h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 32px;
+            margin-bottom: 8px;
+            background: linear-gradient(45deg, #00f3ff, #ff007f);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 30px rgba(0, 243, 255, 0.5);
+        }
+        #nick-input {
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid #ff007f;
+            border-radius: 20px;
+            padding: 10px 20px;
+            color: #fff;
+            font-size: 16px;
+            text-align: center;
+            margin-bottom: 15px;
+            outline: none;
+            width: 240px;
+        }
+        .btn {
+            background: linear-gradient(90deg, #00f3ff, #ff007f);
+            color: #fff;
+            border: none;
+            padding: 12px 36px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 16px;
+            font-weight: 700;
+            border-radius: 25px;
+            cursor: pointer;
+            box-shadow: 0 0 15px rgba(0, 243, 255, 0.4);
+            transition: all 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 25px rgba(0, 243, 255, 0.7);
+        }
+        
+        @keyframes fadeOut {
+            0% { opacity: 1; }
+            80% { opacity: 1; }
+            100% { opacity: 0; transform: translateY(-10px); }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <!-- HUD overlay -->
+        <div id="hud" style="display: none;">
+            <div class="hud-panel" style="display: flex; gap: 15px;">
+                <div>
+                    <div style="font-size: 10px; color: #8c8caf;">HP</div>
+                    <div class="bar-container"><div id="hp-bar" class="hp-bar"></div></div>
+                </div>
+                <div>
+                    <div style="font-size: 10px; color: #8c8caf;">SHIELD</div>
+                    <div class="bar-container"><div id="shield-bar" class="shield-bar"></div></div>
+                </div>
+            </div>
+            
+            <div class="hud-panel" style="text-align: right;">
+                <div style="font-size: 10px; color: #8c8caf;">WEAPON</div>
+                <div id="weapon-val" style="color: #ff007f; font-weight: bold; font-size: 14px;">PISTOL (∞)</div>
+            </div>
+        </div>
+
+        <!-- Leaderboard -->
+        <div id="leaderboard" style="display: none;">
+            <div style="font-family: 'Orbitron', sans-serif; font-size: 11px; color: #00f3ff; margin-bottom: 5px; text-transform: uppercase;">Jangchilar 🏆</div>
+            <div id="leader-list"></div>
+        </div>
+
+        <!-- Kill Feed -->
+        <div id="kill-feed"></div>
+
+        <!-- Login Screen -->
+        <div id="login-screen">
+            <h1>KIBER SURVIVAL 🎯</h1>
+            <p style="color: #8c8caf; font-size: 13px; max-width: 400px; margin-bottom: 20px; line-height: 1.4;">
+                Real-vaqtdagi online ko'p o'yinchili shooter! Arenada harakatlaning, qurol va qalqonlarni talon-toroj qiling (loot) hamda boshqa o'yinchilarni o'qqa tuting!
+            </p>
+            <input type="text" id="nick-input" placeholder="Nikneytingizni kiriting" maxlength="12">
+            <br>
+            <button class="btn" onclick="connectToGame()">Jangga kirish</button>
+            <div style="font-size: 11px; color: #555577; margin-top: 15px;">WASD / Strelkalar (Harakat), Sichqoncha (Otish/Mo'ljal) 💻</div>
+        </div>
+
+        <!-- Game Canvas -->
+        <canvas id="gameCanvas"></canvas>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const loginScreen = document.getElementById('login-screen');
+        const nickInput = document.getElementById('nick-input');
+        const hud = document.getElementById('hud');
+        const leaderboard = document.getElementById('leaderboard');
+        const leaderList = document.getElementById('leader-list');
+        const killFeed = document.getElementById('kill-feed');
+        const hpBar = document.getElementById('hp-bar');
+        const shieldBar = document.getElementById('shield-bar');
+        const weaponVal = document.getElementById('weapon-val');
+
+        function resizeCanvas() {
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = canvas.parentElement.clientHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // Default name settings
+        nickInput.value = tgUser.first_name || `Jangchi_${Math.floor(Math.random()*1000)}`;
+
+        let ws;
+        let myId = null;
+        let mapWidth = 2000;
+        let mapHeight = 2000;
+        let players = [];
+        let bullets = [];
+        let loot = [];
+        let particles = [];
+        
+        let localPlayer = {
+            x: 1000,
+            y: 1000,
+            angle: 0,
+            speed: 5
+        };
+
+        let keys = {};
+        let mouseX = 0;
+        let mouseY = 0;
+        let isMouseDown = false;
+        let audioCtx;
+        let lastShootSentTime = 0;
+
+        window.addEventListener('keydown', (e) => { keys[e.code] = true; });
+        window.addEventListener('keyup', (e) => { keys[e.code] = false; });
+        
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            mouseX = e.clientX - rect.left;
+            mouseY = e.clientY - rect.top;
+        });
+        canvas.addEventListener('mousedown', () => { isMouseDown = true; });
+        canvas.addEventListener('mouseup', () => { isMouseDown = false; });
+
+        // Sound Synthesizer
+        function playSound(type) {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            
+            if (type === 'laser') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(450, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.1);
+                gain.gain.setValueAtTime(0.06, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.1);
+            } else if (type === 'hit') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(50, audioCtx.currentTime + 0.08);
+                gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.08);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.08);
+            } else if (type === 'loot') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(400, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 0.15);
+                gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.15);
+            }
+        }
+
+        function connectToGame() {
+            const nickname = nickInput.value.trim() || "Jangchi";
+            loginScreen.style.display = 'none';
+            hud.style.display = 'flex';
+            leaderboard.style.display = 'block';
+
+            // WebSocket ulanishi
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const host = window.location.host;
+            ws = new WebSocket(`${protocol}//${host}/ws/survival`);
+
+            ws.onopen = () => {
+                // Initialize name on server
+                ws.send(json_msg("init", { name: nickname }));
+            };
+
+            ws.onmessage = (event) => {
+                const data = json_parse(event.data);
+                if (data.type === "init") {
+                    myId = data.your_id;
+                    mapWidth = data.map_width;
+                    mapHeight = data.map_height;
+                } else if (data.type === "state") {
+                    players = data.players;
+                    bullets = data.bullets;
+                    
+                    // Loot collection audio feedback
+                    if (loot.length > data.loot.length) {
+                        playSound('loot');
+                    }
+                    loot = data.loot;
+                    
+                    updateHUD();
+                    updateLeaderboard();
+                } else if (data.type === "kill") {
+                    showKillMsg(data.killer, data.victim);
+                }
+            };
+
+            ws.onclose = () => {
+                alert("Server bilan ulanish uzildi. Qayta yuklang.");
+                location.reload();
+            };
+
+            // Start loop
+            requestAnimationFrame(gameLoop);
+            // Send position updates at 30Hz
+            setInterval(sendUpdate, 33);
+        }
+
+        function sendUpdate() {
+            if (!ws || ws.readyState !== WebSocket.OPEN || myId === null) return;
+            
+            // Local movement prediction/input calculation
+            let dx = 0;
+            let dy = 0;
+            if (keys['KeyW'] || keys['ArrowUp']) dy -= 1;
+            if (keys['KeyS'] || keys['ArrowDown']) dy += 1;
+            if (keys['KeyA'] || keys['ArrowLeft']) dx -= 1;
+            if (keys['KeyD'] || keys['ArrowRight']) dx += 1;
+
+            if (dx !== 0 || dy !== 0) {
+                const len = Math.hypot(dx, dy);
+                localPlayer.x += (dx / len) * localPlayer.speed;
+                localPlayer.y += (dy / len) * localPlayer.speed;
+            }
+
+            // Map boundary constraints
+            if (localPlayer.x < 20) localPlayer.x = 20;
+            if (localPlayer.x > mapWidth - 20) localPlayer.x = mapWidth - 20;
+            if (localPlayer.y < 20) localPlayer.y = 20;
+            if (localPlayer.y > mapHeight - 20) localPlayer.y = mapHeight - 20;
+
+            // Calculate aim angle
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            localPlayer.angle = Math.atan2(mouseY - centerY, mouseX - centerX);
+
+            // Send positions
+            ws.send(json_msg("update", {
+                x: localPlayer.x,
+                y: localPlayer.y,
+                angle: localPlayer.angle
+            }));
+
+            // Handle shooting actions
+            if (isMouseDown) {
+                let me = players.find(p => p.id === myId);
+                if (me && me.hp > 0) {
+                    let cooldown = me.weapon === "rifle" ? 80 : me.weapon === "shotgun" ? 450 : 250;
+                    if (Date.now() - lastShootSentTime > cooldown) {
+                        lastShootSentTime = Date.now();
+                        ws.send(json_msg("shoot", { angle: localPlayer.angle }));
+                        playSound('laser');
+                    }
+                }
+            }
+        }
+
+        function updateHUD() {
+            if (myId === null) return;
+            const me = players.find(p => p.id === myId);
+            if (me) {
+                // If health dropped locally, play hit sound
+                if (me.hp < parseFloat(hpBar.style.width)) {
+                    playSound('hit');
+                }
+                
+                hpBar.style.width = me.hp + '%';
+                shieldBar.style.width = me.shield + '%';
+                
+                const ammoStr = me.weapon === "pistol" ? "∞" : me.ammo;
+                weaponVal.innerText = `${me.weapon.toUpperCase()} (${ammoStr})`;
+                if (me.weapon === "pistol") weaponVal.style.color = "#ff007f";
+                else if (me.weapon === "shield" || me.weapon === "medkit") weaponVal.style.color = "#00ff7f";
+                else weaponVal.style.color = "#ffd700";
+
+                // Sync local player position with server authority safely
+                // to prevent massive jumps but maintain correction
+                const dist = Math.hypot(localPlayer.x - me.x, localPlayer.y - me.y);
+                if (dist > 80) {
+                    localPlayer.x = me.x;
+                    localPlayer.y = me.y;
+                }
+            }
+        }
+
+        function updateLeaderboard() {
+            const sorted = [...players].sort((a, b) => b.kills - a.kills).slice(0, 5);
+            let html = "";
+            sorted.forEach((p, idx) => {
+                const isMe = p.id === myId;
+                const nameStyle = isMe ? 'color:#ffd700;font-weight:bold;' : 'color:#fff;';
+                html += `<div class="leader-row" style="${nameStyle}">`;
+                html += `<span>${idx+1}. ${html_escape(p.name)}</span>`;
+                html += `<span>💀 ${p.kills}</span>`;
+                html += `</div>`;
+            });
+            leaderList.innerHTML = html;
+        }
+
+        function showKillMsg(killer, victim) {
+            const msg = document.createElement('div');
+            msg.className = "kill-msg";
+            msg.innerHTML = `⚡ <b>${html_escape(killer)}</b> yo'q qildi: 💀 <b>${html_escape(victim)}</b>`;
+            killFeed.appendChild(msg);
+            setTimeout(() => msg.remove(), 4000);
+        }
+
+        function gameLoop() {
+            if (!ws || ws.readyState !== WebSocket.OPEN) return;
+
+            // 1. Draw Map & Parallax Cyber Grid
+            ctx.fillStyle = '#060515';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            const camX = localPlayer.x - canvas.width / 2;
+            const camY = localPlayer.y - canvas.height / 2;
+
+            // Map grid drawing
+            ctx.strokeStyle = 'rgba(0, 243, 255, 0.05)';
+            ctx.lineWidth = 1;
+            const gridSize = 50;
+            const startX = Math.floor(camX / gridSize) * gridSize;
+            const startY = Math.floor(camY / gridSize) * gridSize;
+
+            for (let x = startX; x < startX + canvas.width + gridSize; x += gridSize) {
+                if (x < 0 || x > mapWidth) continue;
+                ctx.beginPath();
+                ctx.moveTo(x - camX, 0);
+                ctx.lineTo(x - camX, canvas.height);
+                ctx.stroke();
+            }
+            for (let y = startY; y < startY + canvas.height + gridSize; y += gridSize) {
+                if (y < 0 || y > mapHeight) continue;
+                ctx.beginPath();
+                ctx.moveTo(0, y - camY);
+                ctx.lineTo(canvas.width, y - camY);
+                ctx.stroke();
+            }
+
+            // Map Border boundaries
+            ctx.strokeStyle = '#ff007f';
+            ctx.lineWidth = 4;
+            ctx.strokeRect(-camX, -camY, mapWidth, mapHeight);
+
+            // 2. Draw Loot Items
+            loot.forEach(item => {
+                const screenX = item.x - camX;
+                const screenY = item.y - camY;
+                
+                if (screenX < -20 || screenX > canvas.width + 20 || screenY < -20 || screenY > canvas.height + 20) return;
+
+                ctx.save();
+                ctx.shadowBlur = 10;
+                let color = '#ffd700'; // weapon
+                if (item.type === 'medkit') color = '#ff0055';
+                else if (item.type === 'shield') color = '#00f3ff';
+                
+                ctx.shadowColor = color;
+                ctx.fillStyle = color;
+                ctx.beginPath();
+                ctx.arc(screenX, screenY, 8, 0, Math.PI*2);
+                ctx.fill();
+
+                // Draw symbol
+                ctx.fillStyle = '#fff';
+                ctx.font = '10px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                let symbol = "🔫";
+                if (item.type === 'medkit') symbol = "➕";
+                else if (item.type === 'shield') symbol = "🛡️";
+                ctx.fillText(symbol, screenX, screenY);
+                ctx.restore();
+            });
+
+            // 3. Draw Bullets
+            bullets.forEach(b => {
+                const screenX = b.x - camX;
+                const screenY = b.y - camY;
+                
+                if (screenX < -10 || screenX > canvas.width + 10 || screenY < -10 || screenY > canvas.height + 10) return;
+
+                ctx.save();
+                ctx.shadowBlur = 8;
+                ctx.shadowColor = '#00ff7f';
+                ctx.fillStyle = '#00ff7f';
+                ctx.beginPath();
+                ctx.arc(screenX, screenY, 3, 0, Math.PI*2);
+                ctx.fill();
+                ctx.restore();
+            });
+
+            // 4. Draw Players
+            players.forEach(p => {
+                if (p.hp <= 0) return; // don't draw dead players
+
+                const screenX = p.x - camX;
+                const screenY = p.y - camY;
+
+                if (screenX < -30 || screenX > canvas.width + 30 || screenY < -30 || screenY > canvas.height + 30) return;
+
+                const isMe = p.id === myId;
+
+                ctx.save();
+                ctx.shadowBlur = 12;
+                const color = isMe ? '#00f3ff' : '#ff007f';
+                ctx.shadowColor = color;
+                ctx.fillStyle = color;
+
+                // Player Body
+                ctx.beginPath();
+                ctx.arc(screenX, screenY, 18, 0, Math.PI*2);
+                ctx.fill();
+
+                // Gun turret drawing pointing to angle
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 4;
+                ctx.beginPath();
+                ctx.moveTo(screenX, screenY);
+                ctx.lineTo(screenX + Math.cos(p.angle) * 25, screenY + Math.sin(p.angle) * 25);
+                ctx.stroke();
+
+                // Nickname & HP text
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 11px Rajdhani';
+                ctx.textAlign = 'center';
+                ctx.fillText(`${html_escape(p.name)} (${p.hp}%)`, screenX, screenY - 26);
+                
+                // Shield armor indicator if any
+                if (p.shield > 0) {
+                    ctx.strokeStyle = '#00f3ff';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.arc(screenX, screenY, 23, 0, Math.PI*2);
+                    ctx.stroke();
+                }
+
+                ctx.restore();
+            });
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Helpers
+        function json_msg(action, data) {
+            return JSON.stringify({ action, ...data });
+        }
+        function json_parse(str) {
+            try { return JSON.parse(str); } catch (e) { return {}; }
+        }
+        function html_escape(str) {
+            if (!str) return '';
+            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        }
+    </script>
+</body>
+</html>

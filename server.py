@@ -1,6 +1,9 @@
 import os
 import json
 import logging
+import asyncio
+import random
+import math
 from aiohttp import web
 
 logging.basicConfig(level=logging.INFO)
@@ -204,8 +207,239 @@ async def submit_score_handler(request):
     except Exception as e:
         return web.json_response({"error": str(e)}, status=500)
 
+# --- SURVIVAL MULTIPLAYER MULTIPLAYER GAME STATE ---
+survival_sockets = set()
+survival_players = {}
+survival_bullets = []
+survival_loot = []
+next_bullet_id = 1
+next_loot_id = 1
+
+def spawn_initial_loot():
+    global next_loot_id
+    loot_types = ['shotgun', 'rifle', 'shield', 'medkit']
+    for _ in range(40):
+        survival_loot.append({
+            "id": next_loot_id,
+            "type": random.choice(loot_types),
+            "x": random.randint(50, 1950),
+            "y": random.randint(50, 1950)
+        })
+        next_loot_id += 1
+
+async def respawn_player_delayed(player):
+    await asyncio.sleep(3.0)
+    player["x"] = random.randint(100, 1900)
+    player["y"] = random.randint(100, 1900)
+    player["hp"] = 100
+    player["shield"] = 0
+    player["weapon"] = "pistol"
+    player["ammo"] = 999
+
+async def survival_game_loop():
+    global next_bullet_id, next_loot_id
+    spawn_initial_loot()
+    while True:
+        try:
+            # 1. Update bullets
+            for b in list(survival_bullets):
+                b["x"] += b["vx"]
+                b["y"] += b["vy"]
+                b["life"] -= 1
+                
+                # Check collision with other players
+                hit_player = None
+                hit_ws = None
+                for ws, p in survival_players.items():
+                    if p["id"] == b["owner_id"] or p["hp"] <= 0:
+                        continue
+                    dist = math.hypot(p["x"] - b["x"], p["y"] - b["y"])
+                    if dist < 22:  # player radius (20) + bullet radius (2)
+                        hit_player = p
+                        hit_ws = ws
+                        break
+                        
+                if hit_player:
+                    damage = 20
+                    if hit_player["shield"] > 0:
+                        hit_player["shield"] -= damage
+                        if hit_player["shield"] < 0:
+                            hit_player["hp"] += hit_player["shield"]
+                            hit_player["shield"] = 0
+                    else:
+                        hit_player["hp"] -= damage
+                        
+                    if hit_player["hp"] <= 0:
+                        hit_player["hp"] = 0
+                        killer_name = "Kiber"
+                        
+                        # Add score/kills to shooter
+                        for p in survival_players.values():
+                            if p["id"] == b["owner_id"]:
+                                p["kills"] += 1
+                                killer_name = p["name"]
+                                break
+                                
+                        # Send kill message
+                        kill_msg = json.dumps({
+                            "type": "kill",
+                            "killer": killer_name,
+                            "victim": hit_player["name"]
+                        })
+                        for client in list(survival_sockets):
+                            try: await client.send_str(kill_msg)
+                            except: pass
+                            
+                        asyncio.create_task(respawn_player_delayed(hit_player))
+                        
+                    if b in survival_bullets:
+                        survival_bullets.remove(b)
+                elif b["life"] <= 0 or b["x"] < 0 or b["x"] > 2000 or b["y"] < 0 or b["y"] > 2000:
+                    if b in survival_bullets:
+                        survival_bullets.remove(b)
+                        
+            # 2. Check player loot pickup
+            for ws, p in survival_players.items():
+                if p["hp"] <= 0:
+                    continue
+                for item in list(survival_loot):
+                    dist = math.hypot(p["x"] - item["x"], p["y"] - item["y"])
+                    if dist < 25:
+                        if item["type"] == "medkit":
+                            p["hp"] = min(100, p["hp"] + 40)
+                        elif item["type"] == "shield":
+                            p["shield"] = min(100, p["shield"] + 50)
+                        else:
+                            p["weapon"] = item["type"]
+                            p["ammo"] = 30 if item["type"] == "shotgun" else 60
+                            
+                        if item in survival_loot:
+                            survival_loot.remove(item)
+                            
+                        # Respawn new loot
+                        survival_loot.append({
+                            "id": next_loot_id,
+                            "type": random.choice(['shotgun', 'rifle', 'shield', 'medkit']),
+                            "x": random.randint(50, 1950),
+                            "y": random.randint(50, 1950)
+                        })
+                        next_loot_id += 1
+                        
+            # 3. Broadcast state
+            if survival_sockets:
+                players_list = [p for p in survival_players.values()]
+                state_data = json.dumps({
+                    "type": "state",
+                    "players": players_list,
+                    "bullets": survival_bullets,
+                    "loot": survival_loot
+                })
+                for client in list(survival_sockets):
+                    if not client.closed:
+                        try: await client.send_str(state_data)
+                        except: pass
+                        
+            await asyncio.sleep(0.033)  # ~30 Hz
+        except Exception as e:
+            logging.error(f"Error in survival loop: {e}")
+            await asyncio.sleep(0.1)
+
+async def survival_websocket_handler(request):
+    ws = web.WebSocketResponse()
+    await ws.prepare(request)
+
+    player_id = id(ws)
+    survival_players[ws] = {
+        "id": player_id,
+        "name": f"Jangchi_{player_id % 1000}",
+        "x": random.randint(100, 1900),
+        "y": random.randint(100, 1900),
+        "angle": 0,
+        "hp": 100,
+        "shield": 0,
+        "weapon": "pistol",
+        "ammo": 999,
+        "kills": 0
+    }
+    survival_sockets.add(ws)
+    logging.info(f"Survival player connected: {player_id}")
+    
+    try:
+        await ws.send_str(json.dumps({
+            "type": "init",
+            "your_id": player_id,
+            "map_width": 2000,
+            "map_height": 2000
+        }))
+
+        async for msg in ws:
+            if msg.type == web.WSMsgType.TEXT:
+                data = json.loads(msg.data)
+                action = data.get("action")
+
+                if action == "init":
+                    survival_players[ws]["name"] = data.get("name", f"Jangchi_{player_id % 1000}")
+                elif action == "update":
+                    p = survival_players[ws]
+                    if p["hp"] > 0:
+                        p["x"] = data.get("x", p["x"])
+                        p["y"] = data.get("y", p["y"])
+                        p["angle"] = data.get("angle", p["angle"])
+                elif action == "shoot":
+                    p = survival_players[ws]
+                    if p["hp"] > 0 and p["ammo"] > 0:
+                        if p["weapon"] != "pistol":
+                            p["ammo"] -= 1
+                        angle = data.get("angle", p["angle"])
+                        global next_bullet_id
+                        
+                        if p["weapon"] == "shotgun":
+                            # 3 spread bullets
+                            for dev in [-0.15, 0, 0.15]:
+                                a = angle + dev
+                                survival_bullets.append({
+                                    "id": next_bullet_id,
+                                    "owner_id": player_id,
+                                    "x": p["x"] + math.cos(a) * 25,
+                                    "y": p["y"] + math.sin(a) * 25,
+                                    "vx": math.cos(a) * 12,
+                                    "vy": math.sin(a) * 12,
+                                    "life": 45
+                                })
+                                next_bullet_id += 1
+                        else:
+                            # Single bullet (pistol or rifle)
+                            survival_bullets.append({
+                                "id": next_bullet_id,
+                                "owner_id": player_id,
+                                "x": p["x"] + math.cos(angle) * 25,
+                                "y": p["y"] + math.sin(angle) * 25,
+                                "vx": math.cos(angle) * 14,
+                                "vy": math.sin(angle) * 14,
+                                "life": 60
+                            })
+                            next_bullet_id += 1
+            elif msg.type == web.WSMsgType.ERROR:
+                pass
+    finally:
+        survival_sockets.remove(ws)
+        survival_players.pop(ws, None)
+        logging.info(f"Survival player disconnected: {player_id}")
+    return ws
+
+async def start_background_tasks(app):
+    app['survival_loop'] = asyncio.create_task(survival_game_loop())
+
+async def cleanup_background_tasks(app):
+    app['survival_loop'].cancel()
+    await app['survival_loop']
+
 app = web.Application()
+app.on_startup.append(start_background_tasks)
+app.on_cleanup.append(cleanup_background_tasks)
+
 app.router.add_get('/ws', websocket_handler)
+app.router.add_get('/ws/survival', survival_websocket_handler)
 app.router.add_get('/api/leaderboard', leaderboard_api_handler)
 app.router.add_post('/api/submit_score', submit_score_handler)
 

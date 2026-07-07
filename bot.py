@@ -205,6 +205,7 @@ def get_back_keyboard():
 def get_games_keyboard():
     builder = InlineKeyboardBuilder()
     builder.button(text="Uy Qurish 🏡 (Video O'yin)", callback_data="game_house")
+    builder.button(text="Online Survival 🏆 (Multiplayer)", callback_data="game_survival")
     builder.button(text="Kiber Arena 🎯 (Video O'yin)", callback_data="game_arena")
     builder.button(text="Kiber Tetris 🧱 (Video O'yin)", callback_data="game_tetris")
     builder.button(text="Koinot Jangi 🚀 (Video O'yin)", callback_data="game_space")
@@ -725,6 +726,44 @@ async def start_game_arena(callback: CallbackQuery):
     else:
         await callback.message.answer(
             text=arena_text,
+            reply_markup=builder.as_markup(),
+            parse_mode="HTML"
+        )
+    await callback.answer()
+
+# --- Game 0e: Online Survival ---
+@dp.callback_query(F.data == "game_survival")
+async def start_game_survival(callback: CallbackQuery):
+    survival_text = (
+        f"🏆 <b>Kiber Survival (Online Real-time Multiplayer)</b>\n\n"
+        f"Mutlaqo daxshatli, 2D real-vaqtdagi ko'p o'yinchili omon qolish va otishma o'yini tayyorlandi!\n\n"
+        f"<b>Qanday o'ynash mumkin?</b>\n"
+        f"1️⃣ Quyidagi <b>'Jangga Kirish 🏆'</b> tugmasini bosib, uni brauzeringizda oching.\n"
+        f"2️⃣ <code>WASD</code> yoki strelkalar bilan yuring, sichqoncha bilan nishonga oling va otish uchun sichqonchani bosing.\n"
+        f"3️⃣ Xaritadan dori (Medkit ➕), qalqon (Shield 🛡️) va kuchliroq qurollarni (Shotgun 🔫, Rifle 🔫) terib oling (Loot).\n"
+        f"4️⃣ Real vaqtda boshqa onlayn o'yinchilarni o'qqa tutib, o'ldirib ochko to'plang!\n\n"
+        f"Omon qolish jangida omad yor bo'lsin! ☄️"
+    )
+    
+    builder = InlineKeyboardBuilder()
+    builder.button(text="Jangga Kirish 🏆", url=f"{GAME_URL}/survival.html")
+    builder.button(text="Orqaga ⬅️", callback_data="btn_games_menu")
+    builder.adjust(1)
+    
+    await callback.message.delete()
+    
+    photo_path = os.path.join(os.path.dirname(__file__), "q1.png")
+    if os.path.exists(photo_path):
+        photo = FSInputFile(photo_path)
+        await callback.message.answer_photo(
+            photo=photo,
+            caption=survival_text,
+            reply_markup=builder.as_markup(),
+            parse_mode="HTML"
+        )
+    else:
+        await callback.message.answer(
+            text=survival_text,
             reply_markup=builder.as_markup(),
             parse_mode="HTML"
         )
