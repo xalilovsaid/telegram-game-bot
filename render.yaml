@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: telegram-game-bot
+    runtime: docker
+    plan: free
+    envVars:
+      - key: BOT_TOKEN
+        sync: false
+      - key: GAME_URL
+        sync: false

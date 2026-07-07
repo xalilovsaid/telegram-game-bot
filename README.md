@@ -1,5 +1,7 @@
 # Telegram Onboarding Bot
 
+[![Deploy to Render](https://render.com/images/deploy-to-render.svg)](https://render.com/deploy?repo=https://github.com/xalilovsaid/telegram-game-bot)
+
 Ushbu bot yangi kirgan foydalanuvchilar bilan shaxsan salomlashib, ularga 10 ball bonus beruvchi va interaktiv inline tugmalarga ega bo'lgan Telegram bot namunasidir.
 
 ## 🚀 Ishga tushirish qadamlari
