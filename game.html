@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Koinot Jangi 🚀 - Retro Video O'yin</title>
+    <title>Koinot Jangi 🚀 - Cyber Space Shooter</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         * {
             box-sizing: border-box;
@@ -13,29 +15,37 @@
             padding: 0;
         }
         body {
-            background-color: #0b0b1e;
+            background-color: #040209;
             color: #fff;
-            font-family: 'Outfit', 'Inter', sans-serif;
+            font-family: 'Rajdhani', sans-serif;
             overflow: hidden;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             height: 100vh;
+            background: radial-gradient(circle at center, #0f0d25 0%, #030207 100%);
             touch-action: none;
         }
         #game-container {
             position: relative;
-            width: 100%;
-            max-width: 450px;
-            height: 100%;
-            max-height: 800px;
-            background: radial-gradient(circle, #18183c 0%, #080818 100%);
+            width: 100vw;
+            height: 100vh;
+            background: #060515;
             border: 2px solid #00f3ff;
-            box-shadow: 0 0 20px rgba(0, 243, 255, 0.3);
+            box-shadow: 0 0 30px rgba(0, 243, 255, 0.2);
             display: flex;
             flex-direction: column;
             overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        /* PC/Desktop o'lchamlari uchun 16:9 formatga o'tish */
+        @media (min-width: 800px) {
+            #game-container {
+                width: 960px;
+                height: 540px;
+                border-radius: 12px;
+            }
         }
         canvas {
             flex-grow: 1;
@@ -45,15 +55,25 @@
         }
         #ui-overlay {
             position: absolute;
-            top: 20px;
-            left: 20px;
-            right: 20px;
+            top: 15px;
+            left: 15px;
+            right: 15px;
             display: flex;
             justify-content: space-between;
-            font-size: 18px;
+            align-items: center;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 16px;
             font-weight: bold;
             text-shadow: 0 0 10px #00f3ff;
             pointer-events: none;
+            z-index: 5;
+        }
+        .ui-item {
+            background: rgba(10, 8, 26, 0.6);
+            padding: 5px 12px;
+            border: 1px solid rgba(0, 243, 255, 0.2);
+            border-radius: 6px;
+            backdrop-filter: blur(5px);
         }
         #health-bar-container {
             width: 100px;
@@ -62,6 +82,9 @@
             border: 1px solid #ff007f;
             border-radius: 6px;
             overflow: hidden;
+            display: inline-block;
+            vertical-align: middle;
+            margin-left: 8px;
             box-shadow: 0 0 10px rgba(255, 0, 127, 0.3);
         }
         #health-bar {
@@ -76,7 +99,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(11, 11, 30, 0.9);
+            background-color: rgba(6, 5, 18, 0.95);
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -86,69 +109,84 @@
             text-align: center;
         }
         h1 {
-            font-size: 36px;
-            margin-bottom: 10px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 32px;
+            margin-bottom: 8px;
             background: linear-gradient(45deg, #00f3ff, #ff007f);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             text-shadow: 0 0 30px rgba(0, 243, 255, 0.5);
-            animation: pulse 2s infinite;
         }
-        p {
+        p.desc {
             color: #8c8caf;
-            margin-bottom: 30px;
-            font-size: 14px;
+            margin-bottom: 15px;
+            font-size: 13px;
+            max-width: 480px;
+            line-height: 1.4;
         }
         .btn {
-            background: linear-gradient(90deg, #00f3ff, #005fcc);
+            background: linear-gradient(90deg, #00f3ff, #ff007f);
             color: #fff;
             border: none;
-            padding: 14px 40px;
-            font-size: 18px;
-            font-weight: bold;
-            border-radius: 30px;
+            padding: 12px 36px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 16px;
+            font-weight: 700;
+            border-radius: 25px;
             cursor: pointer;
             box-shadow: 0 0 15px rgba(0, 243, 255, 0.4);
             transition: all 0.2s;
             text-transform: uppercase;
             letter-spacing: 1px;
+            margin-top: 10px;
         }
         .btn:hover {
             transform: scale(1.05);
             box-shadow: 0 0 25px rgba(0, 243, 255, 0.7);
         }
+        #controls-info {
+            font-size: 12px;
+            color: #555577;
+            margin-top: 12px;
+        }
+        /* Mobile Touch Controls */
         #controls {
             position: absolute;
-            bottom: 30px;
+            bottom: 25px;
             left: 20px;
             right: 20px;
             display: flex;
             justify-content: space-between;
             z-index: 5;
         }
+        @media (min-width: 800px) {
+            #controls {
+                display: none; /* Kompyuterda yashirish */
+            }
+        }
         .control-btn {
-            width: 70px;
-            height: 70px;
-            background: rgba(0, 243, 255, 0.15);
+            width: 60px;
+            height: 60px;
+            background: rgba(0, 243, 255, 0.1);
             border: 2px solid #00f3ff;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
             color: #00f3ff;
-            font-size: 28px;
+            font-size: 24px;
             font-weight: bold;
             box-shadow: 0 0 10px rgba(0, 243, 255, 0.2);
             backdrop-filter: blur(5px);
         }
         .control-btn:active {
-            background: rgba(0, 243, 255, 0.4);
+            background: rgba(0, 243, 255, 0.3);
             transform: scale(0.95);
         }
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.03); }
-            100% { transform: scale(1); }
+        #mini-leaderboard {
+            width: 100%;
+            max-width: 320px;
+            margin: 15px auto;
         }
     </style>
 </head>
@@ -157,8 +195,8 @@
     <div id="game-container">
         <!-- UI Overlay -->
         <div id="ui-overlay">
-            <div>SCORE: <span id="score-val">0</span></div>
-            <div style="display: flex; align-items: center; gap: 8px;">
+            <div class="ui-item">SCORE: <span id="score-val">0</span></div>
+            <div class="ui-item" style="display: flex; align-items: center;">
                 <span>HP:</span>
                 <div id="health-bar-container">
                     <div id="health-bar"></div>
@@ -168,15 +206,17 @@
 
         <!-- Menu Screen -->
         <div id="menu-screen">
-            <h1>KOINOT JANGI 🚀</h1>
-            <p>Kosmik kemani boshqaring va dushman kemalarini yo'q qiling! <br>Telefon ekranidagi tugmalar yoki klaviaturadagi chap/o'ng strelkalar orqali boshqariladi.</p>
-            <button class="btn" onclick="startGame()">Boshlash Play</button>
+            <h1 id="menu-title">KOINOT JANGI 🚀</h1>
+            <p class="desc" id="menu-desc">Kosmik kemani boshqarib, neon dushman kemalarini yo'q qiling! <br>Boshqarish: Strelkalar / WASD (Harakat), Space (Otish), Shift (Sekinlashish).</p>
+            <div id="mini-leaderboard"></div>
+            <button class="btn" id="start-btn" onclick="startGame()">Boshlash Play</button>
+            <div id="controls-info">Kompyuterda klaviatura orqali o'ynash tavsiya etiladi 💻</div>
         </div>
 
         <!-- Game Canvas -->
         <canvas id="gameCanvas"></canvas>
 
-        <!-- Touch Controls -->
+        <!-- Touch Controls (Mobile) -->
         <div id="controls">
             <div class="control-btn" id="left-btn">◀</div>
             <div class="control-btn" id="shoot-btn">🔥</div>
@@ -185,10 +225,19 @@
     </div>
 
     <script>
+        const tg = window.Telegram?.WebApp;
+        if (tg) { tg.ready(); }
+        const tgUser = tg?.initDataUnsafe?.user || { id: 8833971710, first_name: "O'yinchi" };
+
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-        
-        // Canvas o'lchamini moslashtirish
+        const menuScreen = document.getElementById('menu-screen');
+        const menuTitle = document.getElementById('menu-title');
+        const menuDesc = document.getElementById('menu-desc');
+        const startBtn = document.getElementById('start-btn');
+        const healthBar = document.getElementById('health-bar');
+        const scoreVal = document.getElementById('score-val');
+
         function resizeCanvas() {
             canvas.width = canvas.parentElement.clientWidth;
             canvas.height = canvas.parentElement.clientHeight;
@@ -202,13 +251,28 @@
         let lasers = [];
         let enemies = [];
         let particles = [];
+        let stars = [];
         let enemySpawnInterval;
         let keys = {};
-        
-        // Web Audio API sintizatori (ovozlar uchun)
         let audioCtx;
+
+        // Parallaks yulduzlar tizimi
+        function initStars() {
+            stars = [];
+            for (let i = 0; i < 60; i++) {
+                stars.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    size: Math.random() * 2,
+                    speed: Math.random() * 1.5 + 0.5
+                });
+            }
+        }
+
+        // Web Audio API sintizatori
         function playSound(type) {
             if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
             
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
@@ -217,52 +281,106 @@
             
             if (type === 'laser') {
                 osc.type = 'sawtooth';
-                osc.frequency.setValueAtTime(800, audioCtx.currentTime);
-                osc.frequency.exponentialRampToValueAtTime(150, audioCtx.currentTime + 0.15);
-                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+                osc.frequency.setValueAtTime(600, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.12);
+                gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.12);
                 osc.start();
-                osc.stop(audioCtx.currentTime + 0.15);
+                osc.stop(audioCtx.currentTime + 0.12);
             } else if (type === 'explosion') {
                 osc.type = 'triangle';
-                osc.frequency.setValueAtTime(180, audioCtx.currentTime);
-                osc.frequency.exponentialRampToValueAtTime(10, audioCtx.currentTime + 0.3);
-                gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+                osc.frequency.setValueAtTime(120, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(10, audioCtx.currentTime + 0.25);
+                gain.gain.setValueAtTime(0.25, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.25);
                 osc.start();
-                osc.stop(audioCtx.currentTime + 0.3);
+                osc.stop(audioCtx.currentTime + 0.25);
+            } else if (type === 'hit') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(200, audioCtx.currentTime);
+                osc.frequency.linearRampToValueAtTime(60, audioCtx.currentTime + 0.1);
+                gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.1);
             } else if (type === 'gameover') {
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(300, audioCtx.currentTime);
-                osc.frequency.linearRampToValueAtTime(100, audioCtx.currentTime + 0.8);
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+                osc.frequency.linearRampToValueAtTime(50, audioCtx.currentTime + 0.6);
                 gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.8);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.6);
                 osc.start();
-                osc.stop(audioCtx.currentTime + 0.8);
+                osc.stop(audioCtx.currentTime + 0.6);
             }
         }
 
-        // Boshqaruv tugmalari sensorlari
+        // Leaderboard API integratsiyasi
+        async function submitAndShowLeaderboard(gameName, finalScore) {
+            try {
+                await fetch('/api/submit_score', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        user_id: tgUser.id,
+                        name: tgUser.first_name,
+                        game: gameName,
+                        score: finalScore
+                    })
+                });
+            } catch(e) { console.error('Submit error:', e); }
+
+            try {
+                const resp = await fetch(`/api/leaderboard?game=${gameName}`);
+                const players = await resp.json();
+                renderMiniLeaderboard(players);
+            } catch(e) { console.error('Leaderboard error:', e); }
+        }
+
+        function renderMiniLeaderboard(players) {
+            const container = document.getElementById('mini-leaderboard');
+            if (!container) return;
+            const top10 = players.filter(p => p.score > 0).slice(0, 5);
+            if (top10.length === 0) {
+                container.innerHTML = '<p style="color:#8c8caf;font-size:12px;">Hozircha peshqadamlar yo\'q.</p>';
+                return;
+            }
+            let html = '<div style="font-family:Orbitron,sans-serif;font-size:11px;color:#00f3ff;margin-bottom:6px;text-transform:uppercase;">🏆 TOP CO-OP REYTING</div>';
+            html += '<div style="max-height:120px;overflow-y:auto;width:100%;">';
+            top10.forEach((p, i) => {
+                const medals = ['🥇','🥈','🥉'];
+                const medal = i < 3 ? medals[i] : `#${i+1}`;
+                const isMe = String(p.id) === String(tgUser.id);
+                const bg = isMe ? 'rgba(255,215,0,0.15)' : 'rgba(255,255,255,0.05)';
+                const border = isMe ? '1px solid #ffd700' : '1px solid rgba(255,255,255,0.08)';
+                html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 8px;margin:2px 0;border-radius:4px;background:${bg};border:${border};">`;
+                html += `<span style="color:#ff007f;font-weight:bold;font-size:12px;">${medal}</span>`;
+                html += `<span style="flex:1;color:#fff;font-size:12px;padding:0 5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left;">${p.name || 'Uchuvchi'}</span>`;
+                html += `<span style="color:#00f3ff;font-weight:bold;font-size:12px;">${p.score.toLocaleString()}</span>`;
+                html += '</div>';
+            });
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        // Boshqaruv hodisalari
         let leftActive = false;
         let rightActive = false;
-        let shootActive = false;
 
         document.getElementById('left-btn').addEventListener('touchstart', (e) => { e.preventDefault(); leftActive = true; });
         document.getElementById('left-btn').addEventListener('touchend', (e) => { e.preventDefault(); leftActive = false; });
         document.getElementById('right-btn').addEventListener('touchstart', (e) => { e.preventDefault(); rightActive = true; });
         document.getElementById('right-btn').addEventListener('touchend', (e) => { e.preventDefault(); rightActive = false; });
-        document.getElementById('shoot-btn').addEventListener('touchstart', (e) => { e.preventDefault(); player.shoot(); });
+        document.getElementById('shoot-btn').addEventListener('touchstart', (e) => { e.preventDefault(); if (player) player.shoot(); });
 
-        // Klaviatura hodisalari
         window.addEventListener('keydown', (e) => { keys[e.code] = true; });
         window.addEventListener('keyup', (e) => { keys[e.code] = false; });
 
         class Player {
             constructor() {
                 this.x = canvas.width / 2;
-                this.y = canvas.height - 130;
-                this.width = 40;
-                this.height = 30;
+                this.y = canvas.height - 80;
+                this.width = 36;
+                this.height = 28;
                 this.speed = 6;
                 this.health = 100;
             }
@@ -270,9 +388,9 @@
                 ctx.save();
                 ctx.shadowBlur = 15;
                 ctx.shadowColor = '#00f3ff';
-                
-                // Kemani chizish (neon uchburchak kema)
                 ctx.fillStyle = '#00f3ff';
+                
+                // Neon uchburchak kosmik kema chizish
                 ctx.beginPath();
                 ctx.moveTo(this.x, this.y - this.height/2);
                 ctx.lineTo(this.x - this.width/2, this.y + this.height/2);
@@ -280,23 +398,46 @@
                 ctx.closePath();
                 ctx.fill();
                 
+                // Dvigatel neon olovi
+                ctx.fillStyle = '#ff007f';
+                ctx.shadowColor = '#ff007f';
+                ctx.beginPath();
+                ctx.moveTo(this.x - 5, this.y + this.height/2);
+                ctx.lineTo(this.x + 5, this.y + this.height/2);
+                ctx.lineTo(this.x, this.y + this.height/2 + 8 + Math.random() * 6);
+                ctx.closePath();
+                ctx.fill();
+                
                 ctx.restore();
             }
             update() {
-                if (keys['ArrowLeft'] || leftActive) {
-                    this.x -= this.speed;
+                // Shift sekinlashtirish/aniqlik rejimi
+                const currentSpeed = keys['ShiftLeft'] || keys['ShiftRight'] ? this.speed / 2.5 : this.speed;
+
+                // Klaviatura harakatlari (WASD yoki Strelkalar)
+                if (keys['ArrowLeft'] || keys['KeyA'] || leftActive) {
+                    this.x -= currentSpeed;
                 }
-                if (keys['ArrowRight'] || rightActive) {
-                    this.x += this.speed;
+                if (keys['ArrowRight'] || keys['KeyD'] || rightActive) {
+                    this.x += currentSpeed;
+                }
+                if (keys['ArrowUp'] || keys['KeyW']) {
+                    this.y -= currentSpeed;
+                }
+                if (keys['ArrowDown'] || keys['KeyS']) {
+                    this.y += currentSpeed;
                 }
                 if (keys['Space']) {
                     if (lasers.length === 0 || lasers[lasers.length - 1].y < this.y - 120) {
                         this.shoot();
                     }
                 }
-                // Ekran chegarasi
+
+                // Ekran chegaralari
                 if (this.x < this.width/2) this.x = this.width/2;
                 if (this.x > canvas.width - this.width/2) this.x = canvas.width - this.width/2;
+                if (this.y < this.height/2 + 40) this.y = this.height/2 + 40;
+                if (this.y > canvas.height - this.height/2) this.y = canvas.height - this.height/2;
             }
             shoot() {
                 if (!gameActive) return;
@@ -328,15 +469,15 @@
 
         class Enemy {
             constructor() {
-                this.x = randomRange(30, canvas.width - 30);
+                this.x = Math.random() * (canvas.width - 60) + 30;
                 this.y = -30;
-                this.speed = randomRange(2, 4);
-                this.radius = randomRange(15, 25);
-                this.color = randomChoice(['#ff0055', '#ff00aa', '#ff007f']);
+                this.speed = Math.random() * 2 + 1.5;
+                this.radius = Math.random() * 8 + 12;
+                this.color = ['#ff0055', '#ff00aa', '#ff007f'][Math.floor(Math.random()*3)];
             }
             draw() {
                 ctx.save();
-                ctx.shadowBlur = 15;
+                ctx.shadowBlur = 12;
                 ctx.shadowColor = this.color;
                 ctx.fillStyle = this.color;
                 ctx.beginPath();
@@ -354,11 +495,11 @@
                 this.x = x;
                 this.y = y;
                 this.color = color;
-                this.size = randomRange(2, 4);
-                this.speedX = randomRange(-3, 3);
-                this.speedY = randomRange(-3, 3);
+                this.size = Math.random() * 3 + 1.5;
+                this.speedX = (Math.random() - 0.5) * 6;
+                this.speedY = (Math.random() - 0.5) * 6;
                 this.alpha = 1;
-                this.decay = randomRange(0.015, 0.03);
+                this.decay = Math.random() * 0.02 + 0.015;
             }
             draw() {
                 ctx.save();
@@ -381,6 +522,11 @@
                 particles.push(new Particle(x, y, color));
             }
             playSound('explosion');
+            
+            // Mobil haptic feedback tebranishi
+            if (navigator.vibrate) {
+                navigator.vibrate(30);
+            }
         }
 
         function spawnEnemy() {
@@ -390,18 +536,17 @@
         }
 
         function startGame() {
-            document.getElementById('menu-screen').style.display = 'none';
+            document.getElementById('mini-leaderboard').innerHTML = '';
+            menuScreen.style.display = 'none';
             score = 0;
-            document.getElementById('score-val').innerText = score;
+            scoreVal.innerText = score;
+            healthBar.style.width = '100%';
             player = new Player();
             lasers = [];
             enemies = [];
             particles = [];
+            initStars();
             gameActive = true;
-            
-            // Audio context faollashtirish
-            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            if (audioCtx.state === 'suspended') audioCtx.resume();
 
             clearInterval(enemySpawnInterval);
             enemySpawnInterval = setInterval(spawnEnemy, 1000);
@@ -413,9 +558,13 @@
             gameActive = false;
             playSound('gameover');
             clearInterval(enemySpawnInterval);
-            document.getElementById('menu-screen').style.display = 'flex';
-            document.querySelector('#menu-screen h1').innerHTML = "O'YIN TUGADI 💀";
-            document.querySelector('#menu-screen p').innerHTML = `Yakuniy ochko: <b>${score}</b><br><br>Qayta urinib ko'rish uchun tugmani bosing.`;
+            
+            menuScreen.style.display = 'flex';
+            menuTitle.innerHTML = "🏁 KOSMIK HALOKAT";
+            menuDesc.innerHTML = `Kemangiz vayron bo'ldi! 💥<br>Siz to'plagan ochko: <b>${score}</b>`;
+            startBtn.innerText = "Qayta Boshlash";
+            
+            submitAndShowLeaderboard('space', score);
         }
 
         function updateGame() {
@@ -423,39 +572,43 @@
 
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Fon yulduzlari
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
-            for (let i = 0; i < 20; i++) {
-                ctx.fillRect((i * 45) % canvas.width, (Date.now() / 10 + i * 80) % canvas.height, 2, 2);
+            // Parallaks yulduzlar chizilishi
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+            for (let i = 0; i < stars.length; i++) {
+                const s = stars[i];
+                ctx.fillRect(s.x, s.y, s.size, s.size);
+                s.y += s.speed;
+                if (s.y > canvas.height) {
+                    s.y = 0;
+                    s.x = Math.random() * canvas.width;
+                }
             }
 
-            // O'yinchi
+            // O'yinchi kema
             player.draw();
             player.update();
 
-            // Lazerlarni boshqarish
+            // Lazerlar harakati
             for (let i = lasers.length - 1; i >= 0; i--) {
                 lasers[i].draw();
                 lasers[i].update();
-
-                // Ekrandan chiqib ketganda o'chirish
                 if (lasers[i].y < 0) {
                     lasers.splice(i, 1);
                 }
             }
 
-            // Dushmanlarni boshqarish
+            // Dushmanlar harakati va to'qnashuvlar
             for (let i = enemies.length - 1; i >= 0; i--) {
                 enemies[i].draw();
                 enemies[i].update();
 
-                // Lazer bilan to'qnashuv
+                // Lazer dushmanga tekkanini aniqlash
                 for (let j = lasers.length - 1; j >= 0; j--) {
                     let dist = Math.hypot(enemies[i].x - lasers[j].x, enemies[i].y - lasers[j].y);
-                    if (dist < enemies[i].radius) {
+                    if (dist < enemies[i].radius + 3) {
                         createExplosion(enemies[i].x, enemies[i].y, enemies[i].color);
                         score += 10;
-                        document.getElementById('score-val').innerText = score;
+                        scoreVal.innerText = score;
                         enemies.splice(i, 1);
                         lasers.splice(j, 1);
                         break;
@@ -464,12 +617,13 @@
                 
                 if (!enemies[i]) continue;
 
-                // O'yinchi kema bilan to'qnashuv
+                // O'yinchi kemaga to'qnashish
                 let distToPlayer = Math.hypot(enemies[i].x - player.x, enemies[i].y - player.y);
                 if (distToPlayer < enemies[i].radius + player.width/2) {
                     createExplosion(enemies[i].x, enemies[i].y, enemies[i].color);
                     player.health -= 25;
-                    document.getElementById('health-bar').style.width = player.health + '%';
+                    healthBar.style.width = player.health + '%';
+                    playSound('hit');
                     enemies.splice(i, 1);
                     
                     if (player.health <= 0) {
@@ -478,13 +632,13 @@
                     continue;
                 }
 
-                // Chegaradan o'tganda
-                if (enemies[i].y > canvas.height) {
+                // Ekrandan pastga tushib ketganlarni o'chirish
+                if (enemies[i].y > canvas.height + 40) {
                     enemies.splice(i, 1);
                 }
             }
 
-            // Portlash zarralarini boshqarish
+            // Portlash zarrachalari
             for (let i = particles.length - 1; i >= 0; i--) {
                 particles[i].draw();
                 particles[i].update();
@@ -496,13 +650,11 @@
             requestAnimationFrame(updateGame);
         }
 
-        // Yordamchi funksiyalar
-        function randomRange(min, max) {
-            return Math.random() * (max - min) + min;
-        }
-        function randomChoice(arr) {
-            return arr[Math.floor(Math.random() * arr.length)];
-        }
+        window.addEventListener('load', () => {
+            initStars();
+            // Boshlang'ich leaderboard ko'rsatish
+            submitAndShowLeaderboard('space', 0);
+        });
     </script>
 </body>
 </html>
