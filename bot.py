@@ -205,6 +205,7 @@ def get_back_keyboard():
 def get_games_keyboard():
     builder = InlineKeyboardBuilder()
     builder.button(text="Uy Qurish 🏡 (Video O'yin)", callback_data="game_house")
+    builder.button(text="Kiber Tetris 🧱 (Video O'yin)", callback_data="game_tetris")
     builder.button(text="Koinot Jangi 🚀 (Video O'yin)", callback_data="game_space")
     builder.button(text="Dino Run 🦖 (Video O'yin)", callback_data="game_dino")
     builder.button(text="Minorani Taxlash 🧱 (Video O'yin)", callback_data="game_stack")
@@ -650,6 +651,42 @@ async def start_game_space(callback: CallbackQuery):
     else:
         await callback.message.answer(
             text=space_text,
+            reply_markup=builder.as_markup(),
+            parse_mode="HTML"
+        )
+    await callback.answer()
+
+# --- Game 0c: Kiber Tetris ---
+@dp.callback_query(F.data == "game_tetris")
+async def start_game_tetris(callback: CallbackQuery):
+    tetris_text = (
+        f"🧱 <b>Kiber Tetris (HTML5 Retro Video O'yin)</b>\n\n"
+        f"Kompyuteringiz va telefoningiz uchun retro-kiberpank uslubidagi Tetris o'yini tayyorlandi!\n\n"
+        f"<b>Qanday o'ynash mumkin?</b>\n"
+        f"1️⃣ Quyidagi <b>'O'yinni Boshlash 🧱'</b> tugmasini bosib, uni brauzeringizda oching.\n"
+        f"2️⃣ Bloklarni joylang, qatorlarni o'chiring va eng ko'p ball yig'ib reytingda 1-o'ringa chiqing!\n\n"
+        f"Tetris jangida omad yor bo'lsin! 🚀"
+    )
+    
+    builder = InlineKeyboardBuilder()
+    builder.button(text="O'yinni Boshlash 🧱", url=f"{GAME_URL}/tetris.html")
+    builder.button(text="Orqaga ⬅️", callback_data="btn_games_menu")
+    builder.adjust(1)
+    
+    await callback.message.delete()
+    
+    photo_path = os.path.join(os.path.dirname(__file__), "q1.png")
+    if os.path.exists(photo_path):
+        photo = FSInputFile(photo_path)
+        await callback.message.answer_photo(
+            photo=photo,
+            caption=tetris_text,
+            reply_markup=builder.as_markup(),
+            parse_mode="HTML"
+        )
+    else:
+        await callback.message.answer(
+            text=tetris_text,
             reply_markup=builder.as_markup(),
             parse_mode="HTML"
         )
