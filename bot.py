@@ -2281,6 +2281,15 @@ async def handle_instagram_link(message: Message):
                 pass
 
 # --- AI MATN YARATISH TIZIMI ---
+def markdown_to_html(text: str) -> str:
+    import re
+    text = html.escape(text)
+    text = re.sub(r'```(.*?)```', r'<pre><code>\1</code></pre>', text, flags=re.DOTALL)
+    text = re.sub(r'`(.*?)`', r'<code>\1</code>', text)
+    text = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', text)
+    text = re.sub(r'\*(.*?)\*', r'<i>\1</i>', text)
+    return text
+
 async def handle_ai_generation(message: Message):
     import aiohttp
     prompt = message.text.strip()
@@ -2301,16 +2310,16 @@ async def handle_ai_generation(message: Message):
                 if response.status == 200:
                     result_text = await response.text()
                     if result_text:
-                        escaped_result = html.escape(result_text)
+                        formatted_result = markdown_to_html(result_text)
                         
-                        if len(escaped_result) > 3500:
-                            parts = [escaped_result[i:i+3500] for i in range(0, len(escaped_result), 3500)]
+                        if len(formatted_result) > 3500:
+                            parts = [formatted_result[i:i+3500] for i in range(0, len(formatted_result), 3500)]
                             await status_msg.delete()
                             for idx, part in enumerate(parts):
-                                caption_part = f"✍️ <b>Sun'iy Intellekt Natijasi (Qism {idx+1}):</b>\n\n<code>{part}</code>"
+                                caption_part = f"✍️ <b>Sun'iy Intellekt Natijasi (Qism {idx+1}):</b>\n\n{part}"
                                 await message.reply(caption_part, parse_mode="HTML")
                         else:
-                            ai_caption = f"✍️ <b>Sun'iy Intellekt Natijasi:</b>\n\n<code>{escaped_result}</code>"
+                            ai_caption = f"✍️ <b>Sun'iy Intellekt Natijasi:</b>\n\n{formatted_result}"
                             await status_msg.edit_text(ai_caption, parse_mode="HTML")
                     else:
                         await status_msg.edit_text("❌ Sun'iy intellektdan bo'sh javob qaytdi. Qayta urinib ko'ring.")
@@ -2458,7 +2467,7 @@ async def process_youtube_audio_download(callback: CallbackQuery):
     video_template = os.path.join(DOWNLOADS_DIR, f"{file_id}.%(ext)s")
     
     ydl_opts = {
-        'format': 'best',
+        'format': 'bestaudio/best',
         'outtmpl': video_template,
         'ffmpeg_location': ffmpeg_path,
         'quiet': True,
